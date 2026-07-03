@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>FRIDAY — Assistente de Voz</title>
+<style>
+  :root{
+    --bg:#060B12; --panel:#0C1520; --edge:#16283A;
+    --cyan:#4FD8EB; --cyan-dim:#1E5A68; --ink:#D9E8EE; --ink-dim:#6D8494;
+    --listen:#4FEB9C; --err:#EB6A4F;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(ellipse at 50% -20%, #0E2233 0%, var(--bg) 55%);
+    color:var(--ink); font-family:-apple-system,'Segoe UI',Roboto,sans-serif;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{padding:14px 18px 10px; display:flex; justify-content:space-between; align-items:center}
+  header .tt h1{
+    font-family:'Courier New',monospace; font-size:14px; letter-spacing:6px;
+    color:var(--cyan); font-weight:400;
+  }
+  header .tt p{font-size:11px; color:var(--ink-dim); letter-spacing:1px; margin-top:2px}
+  #btnConfig{
+    background:none; border:1px solid var(--edge); color:var(--ink-dim);
+    border-radius:8px; padding:6px 12px; font-size:12px;
+  }
+
+  #chat{
+    flex:1; overflow-y:auto; padding:12px 14px;
+    display:flex; flex-direction:column; gap:9px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .msg{max-width:84%; padding:9px 13px; border-radius:12px; font-size:14.5px; line-height:1.45}
+  .msg.user{align-self:flex-end; background:#173049; border:1px solid #1F4160; border-bottom-right-radius:3px}
+  .msg.ai{align-self:flex-start; background:var(--panel); border:1px solid var(--edge); border-bottom-left-radius:3px}
+  .msg.ai::before{
+    content:'FRIDAY'; display:block; font-family:'Courier New',monospace;
+    font-size:9px; letter-spacing:2px; color:var(--cyan-dim); margin-bottom:3px;
+  }
+  .msg.erro{align-self:center; border:1px solid var(--err); color:var(--err); background:none; font-size:12.5px}
+  .msg.sys{align-self:center; color:var(--ink-dim); background:none; font-size:12.5px; text-align:center}
+
+  footer{flex-shrink:0; padding:8px 16px 20px; display:flex; flex-direction:column; align-items:center; gap:8px}
+  #status{
+    font-family:'Courier New',monospace; font-size:10px; letter-spacing:2.5px;
+    text-transform:uppercase; color:var(--cyan-dim); height:13px;
+  }
+
+  #reactor{
+    width:96px; height:96px; border-radius:50%; position:relative;
+    background:var(--panel); border:1px solid var(--edge);
+    display:flex; align-items:center; justify-content:center; font-size:30px;
+  }
+  #reactor .ring{
+    position:absolute; border-radius:50%; border:1px solid transparent;
+    border-top-color:var(--cyan-dim); border-right-color:var(--cyan-dim);
+  }
+  #reactor .r1{inset:-7px; animation:spin 6s linear infinite}
+  #reactor .r2{inset:-14px; animation:spin 10s linear infinite reverse}
+  body[data-state="ouvindo"]  #reactor{border-color:var(--listen); box-shadow:0 0 30px rgba(79,235,156,.3)}
+  body[data-state="ouvindo"]  .ring{border-top-color:var(--listen); border-right-color:var(--listen)}
+  body[data-state="pensando"] #reactor{border-color:var(--cyan); box-shadow:0 0 30px rgba(79,216,235,.35)}
+  body[data-state="pensando"] .r1{animation-duration:1.2s}
+  body[data-state="pensando"] .r2{animation-duration:2s}
+  body[data-state="falando"]  #reactor{border-color:var(--cyan); box-shadow:0 0 30px rgba(79,216,235,.25)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion: reduce){ .ring{animation:none !important} }
+
+  #modeRow{display:flex; align-items:center; gap:14px; font-size:12px; color:var(--ink-dim)}
+  #modeRow input{accent-color:var(--cyan)}
+  #voiceSel{
+    background:var(--panel); color:var(--ink-dim); border:1px solid var(--edge);
+    border-radius:8px; padding:7px; font-size:11.5px; max-width:200px;
+  }
+
+  #modal{
+    position:fixed; inset:0; background:rgba(0,0,0,.75);
+    display:none; align-items:center; justify-content:center; padding:20px; z-index:10;
+  }
+  #modal.open{display:flex}
+  #modal .box{
+    background:var(--panel); border:1px solid var(--edge); border-radius:14px;
+    padding:22px; width:100%; max-width:420px;
+  }
+  #modal h2{font-size:16px; margin-bottom:6px; color:var(--cyan); font-family:'Courier New',monospace; letter-spacing:2px}
+  #modal p{font-size:13px; color:var(--ink-dim); line-height:1.5; margin-bottom:14px}
+  #modal input{
+    width:100%; background:var(--bg); border:1px solid var(--edge); color:var(--ink);
+    border-radius:8px; padding:11px; font-size:13px; margin-bottom:14px;
+  }
+  #modal button{
+    width:100%; background:var(--cyan); color:#04222B; border:none;
+    border-radius:8px; padding:12px; font-size:14px; font-weight:600;
+  }
+</style>
+</head>
+<body data-state="pronto">
+
+<header>
+  <div class="tt">
+    <h1>F R I D A Y</h1>
+    <p>assistente de voz &middot; pt-BR</p>
+  </div>
+  <button id="btnConfig">Configurar</button>
+</header>
+
+<div id="chat">
+  <div class="msg sys">Toque no reator e fale.<br>Modo contínuo: ela volta a escutar sozinha após responder.</div>
+</div>
+
+<footer>
+  <div id="status">pronto</div>
+  <button id="reactor" aria-label="Falar">
+    <span class="ring r1"></span>
+    <span class="ring r2"></span>
+    🎙️
+  </button>
+  <div id="modeRow">
+    <label><input type="checkbox" id="continuo"> Conversa contínua</label>
+    <select id="voiceSel" aria-label="Voz"></select>
+  </div>
+</footer>
+
+<div id="modal">
+  <div class="box">
+    <h2>SERVIDOR</h2>
+    <p>Cole a URL do seu App da Web do Google Apps Script (termina em <b>/exec</b>).
+    Sua chave de API fica protegida no servidor, nunca neste site.</p>
+    <input id="urlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec">
+    <button id="btnSalvar">Salvar e ativar</button>
+  </div>
+</div>
+
+<script>
+var gasUrl = localStorage.getItem('gasUrl') || '';
+var history = [];
+var state = 'pronto';
+var synth = window.speechSynthesis;
+var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+var rec = null;
+
+var chat = document.getElementById('chat');
+var reactor = document.getElementById('reactor');
+var statusEl = document.getElementById('status');
+var chkContinuo = document.getElementById('continuo');
+var voiceSel = document.getElementById('voiceSel');
+var modal = document.getElementById('modal');
+
+var SYSTEM =
+  'Você é FRIDAY, uma assistente de voz pessoal em português brasileiro, ' +
+  'inspirada nas IAs do Homem de Ferro: competente, calma, com leve humor seco. ' +
+  'Trate o usuário como "senhor" ocasionalmente, sem exagero. ' +
+  'Suas respostas serão FALADAS em voz alta: seja concisa (2 a 4 frases na maioria dos casos), ' +
+  'linguagem natural falada, sem markdown, sem listas, sem asteriscos, sem emojis. ' +
+  'Se a pergunta exigir resposta longa, dê o essencial e ofereça detalhar.';
+
+function setState(s){
+  state = s;
+  document.body.dataset.state = s;
+  statusEl.textContent = s;
+}
+
+function addMsg(text, cls){
+  var d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  d.textContent = text;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ── Config do servidor ──────────────────────────────────────────────
+document.getElementById('btnConfig').onclick = function(){
+  document.getElementById('urlInput').value = gasUrl;
+  modal.classList.add('open');
+};
+document.getElementById('btnSalvar').onclick = function(){
+  var v = document.getElementById('urlInput').value.trim();
+  if (v.indexOf('https://script.google.com') !== 0 || v.indexOf('/exec') === -1){
+    alert('URL inválida. Deve começar com https://script.google.com e terminar em /exec');
+    return;
+  }
+  gasUrl = v;
+  localStorage.setItem('gasUrl', v);
+  modal.classList.remove('open');
+  addMsg('Servidor ativado. Pode falar, senhor.', 'sys');
+};
+
+// ── Vozes (TTS) ─────────────────────────────────────────────────────
+function loadVoices(){
+  var vs = synth ? synth.getVoices() : [];
+  var pt = vs.filter(function(v){ return v.lang.indexOf('pt') === 0; });
+  var list = pt.length ? pt : vs;
+  voiceSel.innerHTML = '';
+  list.forEach(function(v){
+    var o = document.createElement('option');
+    o.value = v.name;
+    o.textContent = v.name + ' (' + v.lang + ')';
+    voiceSel.appendChild(o);
+  });
+  var saved = localStorage.getItem('vozNome');
+  if (saved) voiceSel.value = saved;
+}
+if (synth){ loadVoices(); synth.onvoiceschanged = loadVoices; }
+voiceSel.onchange = function(){ localStorage.setItem('vozNome', voiceSel.value); };
+
+function speak(text, onDone){
+  if (!synth){ onDone(); return; }
+  setState('falando');
+  var u = new SpeechSynthesisUtterance(text);
+  var v = synth.getVoices().filter(function(x){ return x.name === voiceSel.value; })[0];
+  if (v) u.voice = v;
+  u.lang = 'pt-BR';
+  u.rate = 1.05;
+  u.onend = onDone;
+  u.onerror = onDone;
+  synth.speak(u);
+}
+
+// ── STT ─────────────────────────────────────────────────────────────
+function startListening(){
+  if (!SR){
+    addMsg('Este navegador não tem reconhecimento de voz. Use o Chrome.', 'erro');
+    return;
+  }
+  rec = new SR();
+  rec.lang = 'pt-BR';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+
+  rec.onstart = function(){ setState('ouvindo'); };
+  rec.onerror = function(e){
+    setState('pronto');
+    if (e.error === 'not-allowed'){
+      addMsg('Permissão de microfone negada. Libere nas configurações do site no Chrome.', 'erro');
+    } else if (e.error !== 'no-speech' && e.error !== 'aborted'){
+      addMsg('Erro de voz: ' + e.error, 'erro');
+    }
+  };
+  rec.onresult = function(e){
+    var text = e.results[0][0].transcript;
+    addMsg(text, 'user');
+    sendToClaude(text);
+  };
+  rec.onend = function(){ if (state === 'ouvindo') setState('pronto'); };
+  rec.start();
+}
+
+// ── Chamada ao proxy GAS (chave protegida no servidor) ──────────────
+function sendToClaude(text){
+  if (!gasUrl){ modal.classList.add('open'); setState('pronto'); return; }
+  setState('pensando');
+  history.push({ role:'user', content:text });
+  if (history.length > 24) history = history.slice(history.length - 24);
+
+  // text/plain evita preflight CORS (o GAS não responde OPTIONS)
+  fetch(gasUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ system: SYSTEM, messages: history })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if (data.error) throw new Error(data.error);
+    history.push({ role:'assistant', content:data.reply });
+    addMsg(data.reply, 'ai');
+    speak(data.reply, function(){
+      setState('pronto');
+      if (chkContinuo.checked) setTimeout(startListening, 400);
+    });
+  })
+  .catch(function(err){
+    setState('pronto');
+    addMsg('Erro: ' + err.message, 'erro');
+  });
+}
+
+// ── Botão ───────────────────────────────────────────────────────────
+reactor.onclick = function(){
+  if (!gasUrl){ modal.classList.add('open'); return; }
+  if (state === 'falando'){ synth.cancel(); setState('pronto'); return; }
+  if (state === 'ouvindo'){ if (rec) rec.stop(); setState('pronto'); return; }
+  if (state === 'pensando') return;
+  startListening();
+};
+
+if (!gasUrl) modal.classList.add('open');
+</script>
+</body>
+</html>
