@@ -136,7 +136,7 @@
 
 <script>
 var gasUrl = localStorage.getItem('gasUrl') || '';
-var history = [];
+var chatHistory = [];
 var state = 'pronto';
 var synth = window.speechSynthesis;
 var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -248,33 +248,50 @@ function startListening(){
   rec.start();
 }
 
+// ── Captura global: qualquer erro aparece na tela ───────────────────
+window.onerror = function(msg){
+  setState('pronto');
+  addMsg('Erro interno: ' + msg, 'erro');
+};
+
 // ── Chamada ao proxy GAS (chave protegida no servidor) ──────────────
 function sendToClaude(text){
-  if (!gasUrl){ modal.classList.add('open'); setState('pronto'); return; }
-  setState('pensando');
-  history.push({ role:'user', content:text });
-  if (history.length > 24) history = history.slice(history.length - 24);
+  try{
+    if (!gasUrl){ modal.classList.add('open'); setState('pronto'); return; }
+    setState('pensando');
+    chatHistory.push({ role:'user', content:text });
+    if (chatHistory.length > 24) chatHistory = chatHistory.slice(chatHistory.length - 24);
 
-  // text/plain evita preflight CORS (o GAS não responde OPTIONS)
-  fetch(gasUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ system: SYSTEM, messages: history })
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(data){
-    if (data.error) throw new Error(data.error);
-    history.push({ role:'assistant', content:data.reply });
-    addMsg(data.reply, 'ai');
-    speak(data.reply, function(){
+    // Limite de 60s: nunca mais travar em silêncio
+    var ctrl = new AbortController();
+    var timer = setTimeout(function(){ ctrl.abort(); }, 60000);
+
+    // text/plain evita preflight CORS (o GAS não responde OPTIONS)
+    fetch(gasUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ system: SYSTEM, messages: chatHistory }),
+      signal: ctrl.signal
+    })
+    .then(function(r){ clearTimeout(timer); return r.json(); })
+    .then(function(data){
+      if (data.error) throw new Error(data.error);
+      chatHistory.push({ role:'assistant', content:data.reply });
+      addMsg(data.reply, 'ai');
+      speak(data.reply, function(){
+        setState('pronto');
+        if (chkContinuo.checked) setTimeout(startListening, 400);
+      });
+    })
+    .catch(function(err){
+      clearTimeout(timer);
       setState('pronto');
-      if (chkContinuo.checked) setTimeout(startListening, 400);
+      addMsg('Erro: ' + (err.name === 'AbortError' ? 'o servidor demorou mais de 60s' : err.message), 'erro');
     });
-  })
-  .catch(function(err){
+  }catch(e){
     setState('pronto');
-    addMsg('Erro: ' + err.message, 'erro');
-  });
+    addMsg('Erro interno: ' + e.message, 'erro');
+  }
 }
 
 // ── Botão ───────────────────────────────────────────────────────────
