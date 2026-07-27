@@ -6,13 +6,13 @@
 <title>FRIDAY · Cérebro Vivo</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html,body{width:100%;height:100%;overflow:hidden;background:#070910;
+  html,body{width:100%;height:100%;overflow:hidden;background:#06080E;
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
   canvas{display:block;touch-action:none}
 
   #header{position:fixed;top:0;left:0;right:0;z-index:10;padding:14px 16px 10px;
     padding-top:calc(14px + env(safe-area-inset-top));
-    background:linear-gradient(180deg,rgba(7,9,16,.95) 40%,rgba(7,9,16,0));
+    background:linear-gradient(180deg,rgba(6,8,14,.95) 40%,rgba(6,8,14,0));
     display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none}
   #header h1{font-weight:700;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#E8EEF5}
   #header p{font-size:10px;color:#5C6478;margin-top:2px}
@@ -40,13 +40,18 @@
     text-align:center;font-size:13px;color:#8890A3;min-height:20px;pointer-events:none;transition:opacity .3s;line-height:1.45}
   #caption b{color:#5FD4D0;font-weight:500}
 
-  .panel{position:fixed;inset:0;z-index:40;background:rgba(7,9,16,.97);display:flex;flex-direction:column;
+  .panel{position:fixed;inset:0;z-index:40;background:rgba(6,8,14,.97);display:flex;flex-direction:column;
     transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,.35,1)}
   .panel.open{transform:translateY(0)}
   .phead{padding:15px 18px;padding-top:calc(15px + env(safe-area-inset-top));display:flex;justify-content:space-between;
     align-items:center;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
   .phead h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#E8EEF5;font-weight:500}
   .phead button{background:none;border:none;color:#8890A3;font-size:20px;padding:4px 8px}
+
+  #focusBar{display:none;padding:9px 16px;background:rgba(95,212,208,.07);border-bottom:1px solid rgba(95,212,208,.15);
+    font-size:12px;color:#5FD4D0;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0}
+  #focusBar.on{display:flex}
+  #focusBar button{background:none;border:none;color:#5C6478;font-size:15px}
 
   #msgs{flex:1;overflow-y:auto;padding:16px 14px 8px;display:flex;flex-direction:column;gap:9px}
   .msg{max-width:86%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
@@ -58,7 +63,7 @@
     border-top:1px solid rgba(255,255,255,.07);flex-shrink:0}
   #inputRow textarea{flex:1;background:#12151F;border:1px solid rgba(255,255,255,.1);border-radius:14px;
     color:#E8EEF5;font-size:16px;padding:11px 14px;resize:none;max-height:110px;outline:none;font-family:inherit}
-  #sendBtn{width:46px;height:46px;align-self:flex-end;border-radius:50%;background:#5FD4D0;border:none;color:#070910;font-size:18px;font-weight:700}
+  #sendBtn{width:46px;height:46px;align-self:flex-end;border-radius:50%;background:#5FD4D0;border:none;color:#06080E;font-size:18px;font-weight:700}
   #sendBtn:disabled{opacity:.4}
   .typing{display:inline-flex;gap:4px}
   .typing span{width:6px;height:6px;border-radius:50%;background:#5FD4D0;animation:tp 1s infinite}
@@ -77,20 +82,24 @@
   .sw.on{background:#4FB08A}
   .sw::after{content:'';position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .2s}
   .sw.on::after{transform:translateX(19px)}
-  .bigBtn{width:100%;padding:14px;border-radius:13px;background:#5FD4D0;color:#070910;border:none;font-size:14px;font-weight:600;margin-top:14px}
+  .bigBtn{width:100%;padding:14px;border-radius:13px;background:#5FD4D0;color:#06080E;border:none;font-size:14px;font-weight:600;margin-top:14px}
   .bigBtn.ghost{background:rgba(255,255,255,.06);color:#A6ADBD}
   .bigBtn.danger{background:rgba(220,80,80,.15);color:#E09090;margin-top:10px}
-  #diagBox{margin-top:22px;padding:13px;background:#0D1018;border:1px solid rgba(255,255,255,.07);border-radius:11px;
-    font-size:11px;color:#7A8296;line-height:1.7;font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto}
+  #diagBox{margin-top:22px;padding:13px;background:#0C0F16;border:1px solid rgba(255,255,255,.07);border-radius:11px;
+    font-size:11px;color:#7A8296;line-height:1.7;font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;max-height:210px;overflow-y:auto}
 
   #sheet{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#10131F;border-top:1px solid rgba(255,255,255,.08);
-    border-radius:20px 20px 0 0;padding:20px 20px calc(26px + env(safe-area-inset-bottom));transform:translateY(115%);
-    transition:transform .32s cubic-bezier(.32,.72,.35,1);max-height:52vh;overflow-y:auto}
+    border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));transform:translateY(115%);
+    transition:transform .32s cubic-bezier(.32,.72,.35,1);max-height:56vh;overflow-y:auto}
   #sheet.open{transform:translateY(0)}
   #sheet .tag{display:inline-block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:8px}
   #sheet h2{font-size:18px;color:#F0F3F8;margin-bottom:6px;font-weight:500}
   #sheet p{font-size:13px;line-height:1.55;color:#A6ADBD}
   #sheet .close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.06);border:none;color:#8890A3;font-size:15px}
+  .sheetActs{display:flex;gap:9px;margin-top:16px}
+  .sheetActs button{flex:1;padding:12px 8px;border-radius:12px;border:none;font-size:13px;font-weight:600}
+  #actTalk{background:#5FD4D0;color:#06080E}
+  #actAsk{background:rgba(255,255,255,.07);color:#C4CBDA}
 </style>
 </head>
 <body>
@@ -98,7 +107,7 @@
 <canvas id="c"></canvas>
 
 <div id="header">
-  <div><h1>FRIDAY · Cérebro</h1><p>toque no orbe e fale</p></div>
+  <div><h1>FRIDAY · Cérebro</h1><p>toque num nó para conversar sobre ele</p></div>
   <div style="display:flex;align-items:flex-start">
     <div id="status">iniciando…</div>
     <button id="gear">⚙</button>
@@ -116,10 +125,15 @@
   <div class="tag" id="shTag"></div>
   <h2 id="shTitle"></h2>
   <p id="shDetail"></p>
+  <div class="sheetActs">
+    <button id="actTalk">💬 Conversar sobre isso</button>
+    <button id="actAsk">🎙 Perguntar por voz</button>
+  </div>
 </div>
 
 <div class="panel" id="chat">
   <div class="phead"><h2>Conversa</h2><button data-close="chat">✕</button></div>
+  <div id="focusBar"><span id="focusLabel"></span><button id="focusClear">✕</button></div>
   <div id="msgs"></div>
   <div id="inputRow">
     <textarea id="inp" rows="1" placeholder="Escreve ou usa o orbe pra falar…"></textarea>
@@ -133,19 +147,20 @@
     <div class="fld">
       <label>URL do servidor FRIDAY</label>
       <input id="cfgFriday" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
-      <small>Web app friday-servidor, publicado para "Qualquer pessoa". Obrigatório nesta versão.</small>
     </div>
     <div class="fld">
       <label>URL do LimpezaGmail</label>
       <input id="cfgGmail" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
-      <small>Endpoint doGet do LimpezaGmail v4.1.</small>
+      <small>Se a chamada direta for bloqueada pelo navegador, o app abre o script numa aba nova automaticamente.</small>
     </div>
     <div class="toggleRow"><span>Falar as respostas</span><button class="sw on" id="swSpeak"></button></div>
     <div class="toggleRow"><span>Escuta contínua</span><button class="sw" id="swCont"></button></div>
-    <div class="toggleRow" style="border:none"><span>Criar nós automaticamente</span><button class="sw on" id="swAuto"></button></div>
+    <div class="toggleRow"><span>Criar nós automaticamente</span><button class="sw on" id="swAuto"></button></div>
+    <div class="toggleRow" style="border:none"><span>Mostrar todos os nomes</span><button class="sw" id="swLabels"></button></div>
     <button class="bigBtn" id="btnSaveCfg">Salvar configuração</button>
     <button class="bigBtn ghost" id="btnTestMic">Testar microfone</button>
     <button class="bigBtn ghost" id="btnTestFriday">Testar servidor FRIDAY</button>
+    <button class="bigBtn ghost" id="btnTestGmail">Testar LimpezaGmail</button>
     <button class="bigBtn danger" id="btnReset">Zerar o cérebro</button>
     <div id="diagBox">diagnóstico…</div>
   </div>
@@ -154,29 +169,31 @@
 <script>
 'use strict';
 
-/* ─────────── DIAGNÓSTICO NA TELA ─────────── */
-var logLines = [];
+/* ═════ DIAGNÓSTICO ═════ */
+var logLines=[];
 function log(s){
   logLines.push(new Date().toLocaleTimeString('pt-BR').slice(0,8)+'  '+s);
-  if(logLines.length>60) logLines.shift();
+  if(logLines.length>70) logLines.shift();
   var b=document.getElementById('diagBox');
   if(b){ b.textContent=logLines.join('\n'); b.scrollTop=b.scrollHeight; }
 }
-window.onerror=function(m,src,ln){ log('✖ '+m+' @'+ln); return false; };
+window.onerror=function(m,s,l){ log('✖ '+m+' @'+l); return false; };
 window.addEventListener('unhandledrejection',function(e){ log('✖ promise: '+(e.reason&&e.reason.message||e.reason)); });
 
-/* ─────────── ESTADO ─────────── */
-var cfg={friday:'',gmail:'',speak:true,cont:false,auto:true};
-var graph=null, chatHistory=[], busy=false, listening=false, speaking=false;
+/* ═════ ESTADO ═════ */
+var cfg={friday:'',gmail:'',speak:true,cont:false,auto:true,labels:false};
+var graph=null,chatHistory=[],busy=false,listening=false,speaking=false,pending=false,micGranted=false;
+var focusNode=null;
 
+/* lobos: cada cluster tem uma âncora dentro da silhueta (coords normalizadas 0..100 x 0..80) */
 var CLUSTERS={
-  core:{main:'#5FD4D0',glow:'rgba(95,212,208,',label:'Núcleo'},
-  vale:{main:'#5B8FB0',glow:'rgba(91,143,176,',label:'Vale · Porto São Luís'},
-  calango:{main:'#D0A93B',glow:'rgba(208,169,59,',label:'Livro Calango'},
-  dev:{main:'#9B84DD',glow:'rgba(155,132,221,',label:'Dev & Apps'},
-  tri:{main:'#4FB08A',glow:'rgba(79,176,138,',label:'Triatleta'},
-  gmail:{main:'#E0655F',glow:'rgba(224,101,95,',label:'Gmail'},
-  novo:{main:'#E07A5F',glow:'rgba(224,122,95,',label:'Novo tema'}
+  core:   {main:'#5FD4D0',glow:'rgba(95,212,208,',label:'Núcleo',       ax:50,ay:34},
+  vale:   {main:'#5B8FB0',glow:'rgba(91,143,176,',label:'Parietal · Vale',    ax:54,ay:17},
+  calango:{main:'#D0A93B',glow:'rgba(208,169,59,',label:'Occipital · Calango',ax:76,ay:33},
+  dev:    {main:'#9B84DD',glow:'rgba(155,132,221,',label:'Frontal · Dev',     ax:27,ay:31},
+  tri:    {main:'#4FB08A',glow:'rgba(79,176,138,',label:'Temporal · Triatlo', ax:45,ay:52},
+  gmail:  {main:'#E0655F',glow:'rgba(224,101,95,',label:'Gmail',        ax:29,ay:50},
+  novo:   {main:'#E07A5F',glow:'rgba(224,122,95,',label:'Novo tema',    ax:64,ay:51}
 };
 
 var SEED={
@@ -190,8 +207,8 @@ var SEED={
     {id:'capa',label:'Capa finalizada',cluster:'calango',detail:'Arte fechada em 26/05/2026.'},
     {id:'noite',label:'Noite de Autógrafos',cluster:'calango',detail:'Evento de lançamento com sessão de autógrafos.'},
     {id:'dev',label:'Dev & Apps',cluster:'dev',hub:true,detail:'Automação e desenvolvimento — tudo do celular Android, sem PC.'},
-    {id:'friday',label:'FRIDAY',cluster:'dev',detail:'Assistente de voz: GitHub Pages + Apps Script v4. Agora é a voz deste cérebro.'},
-    {id:'limpeza',label:'LimpezaGmail v4.1',cluster:'gmail',detail:'Promocionais não lidos com mais de 30 dias, com remetentes protegidos.'},
+    {id:'friday',label:'FRIDAY',cluster:'dev',detail:'Assistente de voz: GitHub Pages + Apps Script v4. É a voz deste cérebro.'},
+    {id:'limpeza',label:'LimpezaGmail v4.1',cluster:'gmail',detail:'Promocionais não lidos com mais de 30 dias vão para a lixeira, com remetentes protegidos.'},
     {id:'iad',label:'IA do Dia',cluster:'dev',detail:'Rotina das 7h: 1 ferramenta + 1 conceito. Atalho iad.'},
     {id:'copa',label:'Copa 26 App',cluster:'dev',detail:'App GAS da Copa 2026, chamadas de API sempre no servidor.'},
     {id:'tri',label:'Triatleta',cluster:'tri',hub:true,detail:'9 anos de competição, categoria Master, Ironman 70.3 e Mundiais Age Group.'}
@@ -202,21 +219,20 @@ var SEED={
 };
 
 function $(id){ return document.getElementById(id); }
-var statusEl,cap,orb,msgs,inp,sendBtn;
+var statusEl,cap,orb,msgs,inp,sendBtn,canvas,ctx;
 
-/* ─────────── ARMAZENAMENTO (localStorage) ─────────── */
-var mem={}, lsOK=false;
-try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); lsOK=true; }catch(e){ log('localStorage bloqueado, usando memória'); }
-function stGet(k){ return lsOK ? localStorage.getItem(k) : (mem[k]||null); }
-function stSet(k,v){ mem[k]=v; if(lsOK){ try{ localStorage.setItem(k,v); }catch(e){ log('falha ao gravar '+k); } } }
-
+/* ═════ ARMAZENAMENTO ═════ */
+var mem={},lsOK=false;
+try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); lsOK=true; }catch(e){}
+function stGet(k){ return lsOK?localStorage.getItem(k):(mem[k]||null); }
+function stSet(k,v){ mem[k]=v; if(lsOK){ try{ localStorage.setItem(k,v); }catch(e){} } }
 function loadState(){
   try{ var c=JSON.parse(stGet('fr-cfg')||'{}'); for(var k in c) cfg[k]=c[k]; }catch(e){}
   try{ graph=JSON.parse(stGet('fr-graph')||'null'); }catch(e){ graph=null; }
   if(!graph||!graph.nodes||!graph.nodes.length) graph=JSON.parse(JSON.stringify(SEED));
   try{ chatHistory=JSON.parse(stGet('fr-chat')||'[]')||[]; }catch(e){ chatHistory=[]; }
   $('cfgFriday').value=cfg.friday||''; $('cfgGmail').value=cfg.gmail||'';
-  setSw('swSpeak',cfg.speak); setSw('swCont',cfg.cont); setSw('swAuto',cfg.auto);
+  setSw('swSpeak',cfg.speak); setSw('swCont',cfg.cont); setSw('swAuto',cfg.auto); setSw('swLabels',cfg.labels);
 }
 function save(){
   stSet('fr-graph',JSON.stringify(graph));
@@ -227,167 +243,292 @@ function save(){
 function upStatus(){ statusEl.textContent=graph.nodes.length+' nós · '+graph.edges.length+' sinapses'+(cfg.friday?' · FRIDAY':''); }
 function setSw(id,v){ $(id).classList.toggle('on',!!v); }
 
-/* ─────────── CANVAS ─────────── */
-var canvas,ctx,W,H,DPR;
+/* ═════ SILHUETA DO CÉREBRO ═════ */
+var BX=0,BY=0,BS=1,W,H,DPR;
+function brainPath(){
+  // desenhado numa caixa de 100 x 80, perfil lateral voltado para a esquerda
+  var p=new Path2D();
+  p.moveTo(20,50);
+  p.bezierCurveTo(7,44, 8,26, 24,17);      // testa
+  p.bezierCurveTo(38,7, 60,5, 73,13);      // topo frontal → topo
+  p.bezierCurveTo(87,20, 93,32, 88,44);    // topo traseiro descendo
+  p.bezierCurveTo(85,53, 78,58, 69,58);    // occipital
+  p.bezierCurveTo(62,64, 46,66, 37,60);    // base temporal
+  p.bezierCurveTo(29,59, 22,56, 20,50);    // volta ao início
+  p.closePath();
+  return p;
+}
+var BRAIN=brainPath();
+// sulcos corticais (linhas internas que dão a textura de cérebro)
+var SULCI=[
+  [[30,20],[38,30],[30,38],[38,46]],
+  [[46,12],[50,24],[42,32],[48,42],[41,52]],
+  [[60,11],[62,24],[55,32],[60,42],[54,52]],
+  [[74,16],[73,28],[80,36],[72,45]],
+  [[24,32],[32,36],[26,44]],
+  [[84,30],[80,40],[86,46]]
+];
+function toScreen(x,y){ return { x:BX+x*BS, y:BY+y*BS }; }
+function fitBrain(){
+  var availW=W*0.94, availH=H-190;
+  BS=Math.min(availW/100, availH/80);
+  BX=(W-100*BS)/2; BY=88+(availH-80*BS)/2;
+}
+function inBrain(x,y){
+  // testa em coordenadas normalizadas usando a matriz atual
+  ctx.save(); ctx.translate(BX,BY); ctx.scale(BS,BS);
+  var ok=ctx.isPointInPath(BRAIN,x,y);
+  ctx.restore(); return ok;
+}
 function resize(){
   DPR=Math.min(window.devicePixelRatio||1,2); W=window.innerWidth; H=window.innerHeight;
   canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  fitBrain();
 }
-var sim={nodes:[],edges:[],byId:{}},particles=[],selected=null,dragN=null,moved=false,energy=0;
 
+/* ═════ SIMULAÇÃO ═════ */
+var sim={nodes:[],edges:[],byId:{}},particles=[],selected=null,dragN=null,moved=false,energy=0;
+function anchorOf(n){
+  var c=CLUSTERS[n.cluster]||CLUSTERS.novo;
+  return toScreen(c.ax,c.ay);
+}
 function rebuild(){
   var old={}; sim.nodes.forEach(function(n){old[n.id]=n;});
   sim.nodes=graph.nodes.map(function(n){
-    var o=old[n.id];
+    var o=old[n.id], a=anchorOf(n);
     return {id:n.id,label:n.label,cluster:n.cluster,hub:!!n.hub,detail:n.detail,
-      x:o?o.x:W/2+(Math.random()-.5)*140,y:o?o.y:H/2+(Math.random()-.5)*140,
-      vx:o?o.vx:0,vy:o?o.vy:0,r:n.id==='core'?26:(n.hub?18:11),born:o?o.born:performance.now()};
+      x:o?o.x:a.x+(Math.random()-.5)*30, y:o?o.y:a.y+(Math.random()-.5)*30,
+      vx:o?o.vx:0,vy:o?o.vy:0,r:n.id==='core'?15:(n.hub?11:7),born:o?o.born:performance.now(),
+      ph:Math.random()*6.28};
   });
   sim.byId={}; sim.nodes.forEach(function(n){sim.byId[n.id]=n;});
   sim.edges=graph.edges.filter(function(e){return sim.byId[e[0]]&&sim.byId[e[1]];});
   particles.length=0;
-  sim.edges.forEach(function(e){for(var k=0;k<2;k++)particles.push({from:e[0],to:e[1],t:Math.random(),speed:.002+Math.random()*.002});});
+  sim.edges.forEach(function(e){ for(var k=0;k<2;k++) particles.push({from:e[0],to:e[1],t:Math.random(),speed:.0022+Math.random()*.002}); });
   upStatus();
 }
 function physics(){
   var N=sim.nodes,i,j;
-  for(i=0;i<N.length;i++)for(j=i+1;j<N.length;j++){
+  var rep=Math.max(BS*BS*0.55,400);
+  for(i=0;i<N.length;i++) for(j=i+1;j<N.length;j++){
     var a=N[i],b=N[j],dx=b.x-a.x,dy=b.y-a.y,d2=dx*dx+dy*dy; if(d2<1)d2=1;
-    var d=Math.sqrt(d2),f=2700/d2,fx=dx/d*f,fy=dy/d*f;
+    var d=Math.sqrt(d2),f=rep/d2,fx=dx/d*f,fy=dy/d*f;
     if(a!==dragN){a.vx-=fx;a.vy-=fy} if(b!==dragN){b.vx+=fx;b.vy+=fy}
   }
   sim.edges.forEach(function(e){
     var a=sim.byId[e[0]],b=sim.byId[e[1]];
-    var rest=(a.hub&&b.hub)?Math.min(W,H)*.32:Math.min(W,H)*.16;
-    var dx=b.x-a.x,dy=b.y-a.y,d=Math.max(Math.sqrt(dx*dx+dy*dy),.01),f=(d-rest)*.012;
+    var rest=BS*(a.hub&&b.hub?26:15);
+    var dx=b.x-a.x,dy=b.y-a.y,d=Math.max(Math.sqrt(dx*dx+dy*dy),.01),f=(d-rest)*.010;
     var fx=dx/d*f,fy=dy/d*f;
     if(a!==dragN){a.vx+=fx;a.vy+=fy} if(b!==dragN){b.vx-=fx;b.vy-=fy}
   });
   N.forEach(function(n){
-    if(n===dragN)return;
-    n.vx+=(W/2-n.x)*.0012; n.vy+=(H/2-n.y)*.0012;
-    n.vx*=.90;n.vy*=.90;n.x+=n.vx;n.y+=n.vy;
-    var m=n.r+8;
-    if(n.x<m){n.x=m;n.vx*=-.5} if(n.x>W-m){n.x=W-m;n.vx*=-.5}
-    if(n.y<m+58){n.y=m+58;n.vy*=-.5} if(n.y>H-m-115){n.y=H-m-115;n.vy*=-.5}
+    if(n===dragN) return;
+    var a=anchorOf(n);
+    n.vx+=(a.x-n.x)*.0055; n.vy+=(a.y-n.y)*.0055;   // atração ao lobo
+    n.vx*=.88; n.vy*=.88; n.x+=n.vx; n.y+=n.vy;
+    // confinamento na silhueta: se saiu, empurra de volta na direção da âncora
+    if(!inBrain(n.x,n.y)){
+      var dx=a.x-n.x, dy=a.y-n.y, d=Math.max(Math.sqrt(dx*dx+dy*dy),.01);
+      n.x+=dx/d*2.2; n.y+=dy/d*2.2; n.vx*=.5; n.vy*=.5;
+    }
   });
 }
 function draw(now){
   try{
     physics(); ctx.clearRect(0,0,W,H);
     var boost=1+energy*2.2;
+
+    ctx.save(); ctx.translate(BX,BY); ctx.scale(BS,BS);
+    // preenchimento suave do córtex
+    var gg=ctx.createLinearGradient(0,0,100,80);
+    gg.addColorStop(0,'rgba(30,42,68,'+(0.30+energy*0.20).toFixed(3)+')');
+    gg.addColorStop(1,'rgba(18,24,42,'+(0.22+energy*0.18).toFixed(3)+')');
+    ctx.fillStyle=gg; ctx.fill(BRAIN);
+    // contorno
+    ctx.lineWidth=0.6/1; ctx.strokeStyle='rgba(120,180,210,'+(0.30+energy*0.30).toFixed(3)+')';
+    ctx.stroke(BRAIN);
+    // sulcos
+    ctx.lineWidth=0.45; ctx.strokeStyle='rgba(120,170,205,'+(0.16+energy*0.18).toFixed(3)+')';
+    SULCI.forEach(function(s){
+      ctx.beginPath(); ctx.moveTo(s[0][0],s[0][1]);
+      for(var i=1;i<s.length;i++){
+        var p0=s[i-1],p1=s[i];
+        ctx.quadraticCurveTo((p0[0]+p1[0])/2+2.5,(p0[1]+p1[1])/2,p1[0],p1[1]);
+      }
+      ctx.stroke();
+    });
+    // cerebelo
+    ctx.beginPath(); ctx.ellipse(78,57,10,6.5,0.25,0,Math.PI*2);
+    ctx.strokeStyle='rgba(120,170,205,'+(0.20+energy*0.15).toFixed(3)+')'; ctx.lineWidth=0.5; ctx.stroke();
+    // tronco encefálico
+    ctx.beginPath(); ctx.moveTo(62,60); ctx.quadraticCurveTo(60,68,56,73);
+    ctx.lineWidth=2.2; ctx.strokeStyle='rgba(120,170,205,'+(0.16+energy*0.12).toFixed(3)+')'; ctx.stroke();
+    ctx.restore();
+
+    // sinapses
     sim.edges.forEach(function(e){
       var A=sim.byId[e[0]],B=sim.byId[e[1]],hl=selected&&(selected===e[0]||selected===e[1]);
-      ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);
-      ctx.strokeStyle=hl?'rgba(255,255,255,.35)':'rgba(255,255,255,'+(.07+energy*.09).toFixed(3)+')';
-      ctx.lineWidth=hl?1.6:1;ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(A.x,A.y);
+      ctx.quadraticCurveTo((A.x+B.x)/2+(A.y-B.y)*0.10,(A.y+B.y)/2+(B.x-A.x)*0.10,B.x,B.y);
+      ctx.strokeStyle=hl?'rgba(255,255,255,.40)':'rgba(160,200,225,'+(.10+energy*.10).toFixed(3)+')';
+      ctx.lineWidth=hl?1.7:0.9; ctx.stroke();
     });
+    // impulsos
     particles.forEach(function(p){
       p.t+=p.speed*boost; if(p.t>1)p.t=0;
-      var A=sim.byId[p.from],B=sim.byId[p.to]; if(!A||!B)return;
-      var x=A.x+(B.x-A.x)*p.t,y=A.y+(B.y-A.y)*p.t;
-      var c=CLUSTERS[B.cluster]||CLUSTERS.novo,fade=Math.sin(p.t*Math.PI);
-      ctx.beginPath();ctx.arc(x,y,1.5+fade*1.5*boost,0,Math.PI*2);
-      ctx.fillStyle=c.main;ctx.globalAlpha=.25+fade*.6;ctx.fill();ctx.globalAlpha=1;
+      var A=sim.byId[p.from],B=sim.byId[p.to]; if(!A||!B) return;
+      var mx=(A.x+B.x)/2+(A.y-B.y)*0.10, my=(A.y+B.y)/2+(B.x-A.x)*0.10;
+      var u=1-p.t;
+      var x=u*u*A.x+2*u*p.t*mx+p.t*p.t*B.x, y=u*u*A.y+2*u*p.t*my+p.t*p.t*B.y;
+      var c=CLUSTERS[B.cluster]||CLUSTERS.novo, fade=Math.sin(p.t*Math.PI);
+      ctx.beginPath(); ctx.arc(x,y,1.3+fade*1.4*boost,0,Math.PI*2);
+      ctx.fillStyle=c.main; ctx.globalAlpha=.25+fade*.6; ctx.fill(); ctx.globalAlpha=1;
     });
+    // neurônios
     sim.nodes.forEach(function(n){
-      var c=CLUSTERS[n.cluster]||CLUSTERS.novo,isSel=selected===n.id;
-      var age=Math.min((now-n.born)/700,1),scale=.4+.6*(1-Math.pow(1-age,3));
-      var pulse=n.id==='core'?(Math.sin(now*.0022)*.5+.5)*(4+energy*10):0;
-      var R=(n.r+pulse)*scale,gR=R*(isSel?3.2:2.3+energy);
+      var c=CLUSTERS[n.cluster]||CLUSTERS.novo, isSel=selected===n.id;
+      var age=Math.min((now-n.born)/700,1), scale=.4+.6*(1-Math.pow(1-age,3));
+      var fire=(Math.sin(now*.0015+n.ph)*.5+.5);
+      var R=(n.r*(0.92+fire*0.12))*scale + (n.id==='core'?fire*2.5:0);
+      var gR=R*(isSel?3.4:2.4+energy);
       var g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,gR);
-      g.addColorStop(0,c.glow+(isSel?.55:.28+energy*.25).toFixed(3)+')');
+      g.addColorStop(0,c.glow+(isSel?.6:.24+fire*.14+energy*.22).toFixed(3)+')');
       g.addColorStop(1,c.glow+'0)');
-      ctx.beginPath();ctx.arc(n.x,n.y,gR,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
-      ctx.beginPath();ctx.arc(n.x,n.y,R,0,Math.PI*2);ctx.fillStyle=c.main;ctx.fill();
-      if(n.hub||isSel||n.cluster==='novo'||n.cluster==='gmail'){
-        ctx.font=(n.id==='core'?'600 12px':'500 10.5px')+' sans-serif';
-        ctx.fillStyle='#E8EEF5';ctx.textAlign='center';ctx.fillText(n.label,n.x,n.y+R+14);
+      ctx.beginPath(); ctx.arc(n.x,n.y,gR,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+      ctx.beginPath(); ctx.arc(n.x,n.y,R,0,Math.PI*2); ctx.fillStyle=c.main; ctx.fill();
+      if(isSel){ ctx.beginPath(); ctx.arc(n.x,n.y,R+4,0,Math.PI*2);
+        ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1.2; ctx.stroke(); }
+      if(cfg.labels||n.hub||isSel||n.cluster==='novo'){
+        ctx.font=(n.id==='core'?'600 11.5px':'500 10px')+' sans-serif';
+        ctx.textAlign='center';
+        ctx.fillStyle='rgba(6,8,14,.75)';
+        var tw=ctx.measureText(n.label).width;
+        ctx.fillRect(n.x-tw/2-3,n.y+R+4,tw+6,13);
+        ctx.fillStyle='#E8EEF5'; ctx.fillText(n.label,n.x,n.y+R+14);
       }
     });
-    energy*=.94;
+    energy*=.945;
   }catch(err){ log('✖ draw: '+err.message); }
   requestAnimationFrame(draw);
 }
-function ptOf(e){var r=canvas.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+function ptOf(e){ var r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
 
-/* ─────────── VOZ ─────────── */
+/* ═════ VOZ ═════ */
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-var rec=null,ptVoice=null,restartTimer=null;
-
+var rec=null,ptVoice=null,restartTimer=null,watchdog=null;
 function loadVoices(){
-  if(!window.speechSynthesis)return;
-  var vs=speechSynthesis.getVoices();
-  var found=vs.filter(function(v){return /^pt/i.test(v.lang);})[0];
-  if(found&&found!==ptVoice){ ptVoice=found; log('voz pt: '+found.name); }
+  if(!window.speechSynthesis) return;
+  var f=speechSynthesis.getVoices().filter(function(v){return /^pt/i.test(v.lang);})[0];
+  if(f&&f!==ptVoice){ ptVoice=f; log('voz pt: '+f.name); }
 }
 function initRec(){
-  if(!SR){ log('✖ SpeechRecognition indisponível neste navegador'); showCap('Sem reconhecimento de voz. Use o Chrome.'); return null; }
+  if(!SR){ log('✖ sem SpeechRecognition'); return null; }
   var r=new SR();
   r.lang='pt-BR'; r.continuous=false; r.interimResults=true; r.maxAlternatives=1;
-  r.onstart=function(){ listening=true; orb.classList.add('listening'); showCap('Ouvindo…'); log('mic ON'); };
-  r.onaudiostart=function(){ log('áudio capturando'); };
+  r.onstart=function(){ pending=false; clearTimeout(watchdog); listening=true; orb.classList.add('listening'); showCap('Ouvindo…'); log('mic ON'); };
   r.onresult=function(e){
-    var interim='',final='';
+    var it='',fin='';
     for(var i=e.resultIndex;i<e.results.length;i++){
       var t=e.results[i][0].transcript;
-      if(e.results[i].isFinal) final+=t; else interim+=t;
+      if(e.results[i].isFinal) fin+=t; else it+=t;
     }
-    if(interim) showCap(esc(interim));
-    if(final.trim()){ log('ouvi: '+final.trim()); showCap('<b>'+esc(final.trim())+'</b>'); stopRec(); handleVoice(final.trim()); }
+    if(it) showCap(esc(it));
+    if(fin.trim()){ log('ouvi: '+fin.trim()); showCap('<b>'+esc(fin.trim())+'</b>'); stopRec(); handleVoice(fin.trim()); }
   };
   r.onerror=function(ev){
-    log('✖ mic: '+ev.error);
+    pending=false; clearTimeout(watchdog); log('✖ mic: '+ev.error);
     if(ev.error==='not-allowed'||ev.error==='service-not-allowed'){
-      showCap('Microfone bloqueado. Toque no cadeado 🔒 da barra de endereço e permita o microfone.');
+      showCap('Microfone bloqueado. Libere pelo ícone à esquerda do endereço.');
       cfg.cont=false; setSw('swCont',false);
-    } else if(ev.error==='network'){
-      showCap('Sem rede para o reconhecimento de voz.');
     }
   };
   r.onend=function(){
-    listening=false; orb.classList.remove('listening'); log('mic OFF');
+    pending=false; clearTimeout(watchdog); listening=false; orb.classList.remove('listening'); log('mic OFF');
     if(cfg.cont&&!busy&&!speaking){ clearTimeout(restartTimer); restartTimer=setTimeout(startRec,500); }
   };
   return r;
 }
-function startRec(){
-  if(listening||busy||speaking)return;
-  if(location.protocol!=='https:'&&location.hostname!=='localhost'){
-    showCap('O microfone só funciona em HTTPS.'); log('✖ não é HTTPS'); return;
+function reallyStart(){
+  if(!rec) rec=initRec(); if(!rec) return;
+  pending=true; orb.classList.add('listening'); showCap('Abrindo microfone…');
+  try{ rec.start(); }
+  catch(e){
+    log('recuperando: '+e.message);
+    try{ rec.abort(); }catch(e2){}
+    pending=false; listening=false;
+    setTimeout(function(){ try{ rec.start(); pending=true; }catch(e3){ log('✖ '+e3.message); orb.classList.remove('listening'); } },350);
   }
-  if(!rec) rec=initRec();
-  if(!rec)return;
-  try{ rec.start(); }catch(e){ log('start ignorado: '+e.message); }
+  clearTimeout(watchdog);
+  watchdog=setTimeout(function(){
+    if(pending&&!listening){ log('✖ microfone não abriu'); showCap('Microfone não abriu. Use "Testar microfone".');
+      pending=false; orb.classList.remove('listening'); try{ rec.abort(); }catch(e){} }
+  },4000);
 }
-function stopRec(){ clearTimeout(restartTimer); if(rec&&listening){try{rec.abort()}catch(e){}} listening=false; orb.classList.remove('listening'); }
-function toggleVoice(){ listening?stopRec():startRec(); }
+function startRec(){
+  if(listening||pending||busy||speaking) return;
+  if(location.protocol!=='https:'&&location.hostname!=='localhost'){ showCap('O microfone só funciona em HTTPS.'); log('✖ não é HTTPS'); return; }
+  if(!micGranted&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+    showCap('Pedindo permissão do microfone…');
+    navigator.mediaDevices.getUserMedia({audio:true})
+      .then(function(s){ s.getTracks().forEach(function(t){t.stop();}); micGranted=true; log('✔ permissão OK'); reallyStart(); })
+      .catch(function(e){ log('✖ permissão: '+e.name); showCap('Permissão negada.'); orb.classList.remove('listening'); });
+    return;
+  }
+  reallyStart();
+}
+function stopRec(){
+  clearTimeout(restartTimer); clearTimeout(watchdog);
+  if(rec&&(listening||pending)){ try{ rec.abort(); }catch(e){} }
+  listening=false; pending=false; orb.classList.remove('listening');
+}
+function toggleVoice(){ (listening||pending)?stopRec():startRec(); }
 function esc(s){ return String(s).replace(/[<>&]/g,function(m){return{'<':'&lt;','>':'&gt;','&':'&amp;'}[m];}); }
 function showCap(h){ cap.innerHTML=h; cap.style.opacity=1; clearTimeout(cap._t); cap._t=setTimeout(function(){cap.style.opacity=0;},8000); }
-function say(text){
-  showCap(esc(text));
+function say(t){
+  showCap(esc(t));
   if(!cfg.speak||!window.speechSynthesis){ if(cfg.cont) startRec(); return; }
   stopRec(); speechSynthesis.cancel();
-  var u=new SpeechSynthesisUtterance(String(text).replace(/[*#`_~]/g,''));
+  var u=new SpeechSynthesisUtterance(String(t).replace(/[*#`_~]/g,''));
   u.lang='pt-BR'; u.rate=1.05; if(ptVoice) u.voice=ptVoice;
   speaking=true; orb.classList.add('speaking');
   var done=function(){ if(!speaking)return; speaking=false; orb.classList.remove('speaking');
     if(cfg.cont) restartTimer=setTimeout(startRec,350); };
   u.onend=done; u.onerror=done;
   setTimeout(function(){ if(speaking&&!speechSynthesis.speaking) done(); },1500);
-  try{ speechSynthesis.speak(u); }catch(e){ log('✖ fala: '+e.message); done(); }
+  try{ speechSynthesis.speak(u); }catch(e){ done(); }
 }
 
-/* ─────────── GMAIL ─────────── */
+/* ═════ GMAIL (com plano B em aba nova) ═════ */
+function gmailURL(){
+  return cfg.gmail+(cfg.gmail.indexOf('?')>-1?'&':'?')+'origem=cerebro&t='+Date.now();
+}
+function abrirGmailEmAba(url,motivo){
+  log('plano B: abrindo em aba nova ('+motivo+')');
+  bubble('sys','🌐 abrindo o script numa aba nova — a limpeza roda lá');
+  var w=window.open(url,'_blank');
+  if(!w){
+    bubble('err','O navegador bloqueou a janela. Toque em "Permitir pop-ups" ou abra manualmente:\n'+cfg.gmail);
+    say('O navegador bloqueou a janela.');
+  } else {
+    say('Abri o script numa aba nova.');
+    addNode({id:'limp'+Date.now().toString(36),label:'Limpeza '+new Date().toLocaleDateString('pt-BR'),
+      cluster:'gmail',detail:'Disparada pelo cérebro em aba nova, em '+new Date().toLocaleString('pt-BR')+'.',connectTo:['limpeza']});
+    save();
+  }
+}
 function runGmailCleanup(){
-  if(!cfg.gmail){ say('Preciso da URL do LimpezaGmail.'); openP('settings'); return Promise.resolve(); }
-  openP('chat'); bubble('sys','📧 chamando LimpezaGmail…'); say('Rodando a limpeza do Gmail.'); energy=1.2;
-  var url=cfg.gmail+(cfg.gmail.indexOf('?')>-1?'&':'?')+'origem=cerebro&t='+Date.now();
-  return fetch(url,{method:'GET',redirect:'follow'})
-    .then(function(r){ return r.text(); })
+  if(!cfg.gmail){ say('Preciso da URL do LimpezaGmail.'); openP('settings'); return; }
+  openP('chat'); bubble('sys','📧 chamando LimpezaGmail…'); say('Rodando a limpeza do Gmail.'); energy=1.3;
+  var url=gmailURL();
+  var ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
+  var to=setTimeout(function(){ if(ctrl) ctrl.abort(); },25000);
+  fetch(url,{method:'GET',redirect:'follow',signal:ctrl?ctrl.signal:undefined})
+    .then(function(r){ clearTimeout(to); log('gmail HTTP '+r.status); return r.text(); })
     .then(function(txt){
       txt=(txt||'').trim();
+      if(/^<!DOCTYPE|^<html/i.test(txt)){ abrirGmailEmAba(url,'devolveu HTML'); return; }
       var clean=txt.length>500?txt.slice(0,500)+'…':(txt||'Execução concluída.');
       bubble('ai',clean); say('Limpeza concluída.');
       addNode({id:'limp'+Date.now().toString(36),label:'Limpeza '+new Date().toLocaleDateString('pt-BR'),
@@ -395,30 +536,40 @@ function runGmailCleanup(){
       save();
     })
     .catch(function(e){
-      log('✖ gmail: '+e.message);
-      bubble('err','Falha no LimpezaGmail: '+e.message+'\nChecar: publicado para "Qualquer pessoa" e URL terminando em /exec.');
-      say('Não consegui chamar a limpeza.');
+      clearTimeout(to); log('✖ gmail: '+(e.name||'')+' '+e.message);
+      abrirGmailEmAba(url,e.name==='AbortError'?'demorou demais':'bloqueio do navegador');
     });
 }
 
-/* ─────────── CÉREBRO ─────────── */
+/* ═════ CONVERSA ═════ */
 function bubble(cls,text){ var d=document.createElement('div'); d.className='msg '+cls; d.textContent=text;
   msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
 function renderMsgs(){ msgs.innerHTML=''; chatHistory.forEach(function(m){bubble(m.role==='user'?'user':'ai',m.content);}); msgs.scrollTop=msgs.scrollHeight; }
+function setFocus(n){
+  focusNode=n;
+  var bar=$('focusBar');
+  if(n){ bar.classList.add('on'); $('focusLabel').textContent='Falando sobre: '+n.label; }
+  else bar.classList.remove('on');
+}
 function handleVoice(t){
   if(/limp\w*\s+(o\s+|meu\s+|meus\s+)?(g-?mail|e-?mails?|caixa|inbox)/i.test(t)){ runGmailCleanup(); return; }
   sendMsg(t);
 }
 function graphSummary(){ return graph.nodes.map(function(n){return n.id+'|'+n.label+'|'+n.cluster;}).join('\n'); }
 function SYSTEM(){
-return 'Você é FRIDAY, o cérebro do Fábio Sobral — engenheiro eletricista na Vale (Porto São Luís / EFC Carajás), autor de "Resistente como um Calango", triatleta Master, e dev que constrói apps direto do celular.\n\n'+
-'Fábio tem TDAH: ação concreta primeiro, uma coisa de cada vez, direto, sem bajulação. Português brasileiro. As respostas serão FALADAS: frases curtas, sem markdown, no máximo 3 frases.\n\n'+
-'Grafo atual (id|label|cluster):\n'+graphSummary()+'\n\n'+
-'Clusters válidos: vale, calango, dev, tri, gmail, novo.\n'+
-'Ação disponível: "limpar_gmail". Use só se ele pedir claramente.\n\n'+
-'Responda APENAS com JSON válido, sem markdown:\n'+
-'{"reply":"resposta falada","action":null,"newNodes":[{"id":"slug","label":"Nome","cluster":"dev","detail":"1-2 frases","connectTo":["id-existente"]}],"newEdges":[]}\n\n'+
-'Só crie newNodes para temas realmente novos. Ids não podem repetir os existentes.';
+  var foco='';
+  if(focusNode){
+    foco='\nFOCO ATUAL: o Fábio tocou no nó "'+focusNode.label+'" (id '+focusNode.id+'). Contexto desse nó: '+
+      (focusNode.detail||'sem detalhe')+'\nResponda sobre esse assunto especificamente, a menos que ele mude de tema.\n';
+  }
+  return 'Você é FRIDAY, o cérebro do Fábio Sobral — engenheiro eletricista na Vale (Porto São Luís / EFC Carajás), autor de "Resistente como um Calango", triatleta Master, e dev que constrói apps direto do celular.\n\n'+
+  'Fábio tem TDAH: ação concreta primeiro, uma coisa de cada vez, direto, sem bajulação. Português brasileiro. As respostas serão FALADAS: frases curtas, sem markdown, no máximo 3 frases.\n'+foco+'\n'+
+  'Grafo atual (id|label|cluster):\n'+graphSummary()+'\n\n'+
+  'Clusters válidos: vale, calango, dev, tri, gmail, novo.\n'+
+  'Ação disponível: "limpar_gmail". Use só se ele pedir claramente.\n\n'+
+  'Responda APENAS com JSON válido, sem markdown:\n'+
+  '{"reply":"resposta falada","action":null,"newNodes":[{"id":"slug","label":"Nome","cluster":"dev","detail":"1-2 frases","connectTo":["id-existente"]}],"newEdges":[]}\n\n'+
+  'Só crie newNodes para temas realmente novos. Ids não podem repetir os existentes.';
 }
 function safeMessages(){
   var h=chatHistory.slice(-16);
@@ -435,11 +586,11 @@ function callBrain(body){
   if(!cfg.friday) return Promise.reject(new Error('URL da FRIDAY não configurada'));
   return fetch(cfg.friday,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify(body),redirect:'follow'})
-    .then(function(r){ return r.text(); })
+    .then(function(r){ log('friday HTTP '+r.status); return r.text(); })
     .then(function(t){
       t=(t||'').trim();
       if(!t) throw new Error('servidor retornou vazio');
-      if(/^<!DOCTYPE|^<html/i.test(t)) throw new Error('servidor devolveu HTML — verifique se está publicado para "Qualquer pessoa"');
+      if(/^<!DOCTYPE|^<html/i.test(t)) throw new Error('servidor devolveu HTML — verifique a publicação');
       var j; try{ j=JSON.parse(t); }catch(e){ return {content:[{type:'text',text:t}]}; }
       if(j.error) throw new Error(j.error.message||String(j.error));
       if(j.content) return j;
@@ -448,22 +599,21 @@ function callBrain(body){
 }
 function extractReply(raw){
   var s=String(raw).replace(/```json/gi,'').replace(/```/g,'').trim();
-  try{ return JSON.parse(s); }catch(e){}
+  try{ var o=JSON.parse(s); if(typeof o.reply==='string') return o; }catch(e){}
   var i=s.indexOf('{'),j=s.lastIndexOf('}');
-  if(i>-1&&j>i){ try{ return JSON.parse(s.slice(i,j+1)); }catch(e){} }
+  if(i>-1&&j>i){ try{ var o2=JSON.parse(s.slice(i,j+1)); if(typeof o2.reply==='string') return o2; }catch(e){} }
   return {reply:s||'Não entendi. Repete?',action:null,newNodes:[],newEdges:[]};
 }
 function sendMsg(text){
-  text=String(text||'').trim();
-  if(!text||busy)return;
+  text=String(text||'').trim(); if(!text||busy) return;
   inp.value=''; inp.style.height='auto'; openP('chat');
   chatHistory.push({role:'user',content:text}); bubble('user',text);
   busy=true; sendBtn.disabled=true; stopRec(); orb.classList.add('thinking'); energy=1;
   var typing=bubble('ai',''); typing.innerHTML='<span class="typing"><span></span><span></span><span></span></span>';
-  var msgList=safeMessages();
+  var list=safeMessages();
   var done=function(){ busy=false; sendBtn.disabled=false; orb.classList.remove('thinking'); };
-  if(!msgList){ typing.remove(); bubble('err','Histórico inválido.'); done(); return; }
-  callBrain({model:'claude-sonnet-4-6',max_tokens:1000,system:SYSTEM(),messages:msgList})
+  if(!list){ typing.remove(); bubble('err','Histórico inválido.'); done(); return; }
+  callBrain({model:'claude-sonnet-4-6',max_tokens:1000,system:SYSTEM(),messages:list})
     .then(function(data){
       var raw=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
       var p=extractReply(raw);
@@ -479,7 +629,7 @@ function sendMsg(text){
           if(ok&&!dup&&a!==b){ graph.edges.push([a,b]); changed=true; }
         });
       }
-      if(changed){ rebuild(); bubble('sys','⚡ novas sinapses'); energy=1.5; }
+      if(changed){ rebuild(); bubble('sys','⚡ novas sinapses'); energy=1.6; }
       save(); done(); say(p.reply);
       if(p.action==='limpar_gmail') runGmailCleanup();
     })
@@ -489,9 +639,9 @@ function sendMsg(text){
     });
 }
 function addNode(n){
-  if(!n||!n.id)return false;
+  if(!n||!n.id) return false;
   var id=String(n.id).trim();
-  if(!id||graph.nodes.some(function(x){return x.id===id;}))return false;
+  if(!id||graph.nodes.some(function(x){return x.id===id;})) return false;
   graph.nodes.push({id:id,label:n.label||id,cluster:CLUSTERS[n.cluster]?n.cluster:'novo',detail:n.detail||''});
   var links=(n.connectTo||[]).filter(function(t){return t!==id&&graph.nodes.some(function(x){return x.id===t;});});
   if(links.length) links.forEach(function(t){graph.edges.push([t,id]);});
@@ -499,30 +649,32 @@ function addNode(n){
   rebuild(); return true;
 }
 
-/* ─────────── PAINÉIS ─────────── */
+/* ═════ PAINÉIS ═════ */
 function openP(id){ $(id).classList.add('open'); if(id==='chat') renderMsgs(); }
 function closeP(id){ $(id).classList.remove('open'); }
+var sheetNode=null;
 function openSheet(n){
-  selected=n.id; var c=CLUSTERS[n.cluster]||CLUSTERS.novo,t=$('shTag');
+  selected=n.id; sheetNode=n;
+  var c=CLUSTERS[n.cluster]||CLUSTERS.novo,t=$('shTag');
   t.textContent=c.label; t.style.background=c.glow+'.18)'; t.style.color=c.main;
   $('shTitle').textContent=n.label; $('shDetail').textContent=n.detail||'';
-  $('sheet').classList.add('open');
+  $('sheet').classList.add('open'); energy=0.8;
 }
 function closeSheet(){ selected=null; $('sheet').classList.remove('open'); }
 
-/* ─────────── BOOT ─────────── */
+/* ═════ BOOT ═════ */
 window.addEventListener('DOMContentLoaded',function(){
   statusEl=$('status'); cap=$('caption'); orb=$('orb'); msgs=$('msgs'); inp=$('inp'); sendBtn=$('sendBtn');
   canvas=$('c'); ctx=canvas.getContext('2d'); resize();
-  window.addEventListener('resize',resize);
+  window.addEventListener('resize',function(){ resize(); });
 
   canvas.addEventListener('pointerdown',function(e){
     var p=ptOf(e); moved=false; var best=null,bd=1e9;
-    sim.nodes.forEach(function(n){var d=Math.sqrt((n.x-p.x)*(n.x-p.x)+(n.y-p.y)*(n.y-p.y)); if(d<n.r+16&&d<bd){bd=d;best=n;}});
-    dragN=best; if(dragN){try{canvas.setPointerCapture(e.pointerId)}catch(err){}}
+    sim.nodes.forEach(function(n){ var d=Math.sqrt((n.x-p.x)*(n.x-p.x)+(n.y-p.y)*(n.y-p.y)); if(d<n.r+18&&d<bd){bd=d;best=n;} });
+    dragN=best; if(dragN){ try{canvas.setPointerCapture(e.pointerId)}catch(err){} }
   });
   canvas.addEventListener('pointermove',function(e){
-    if(!dragN)return; var p=ptOf(e),dx=p.x-dragN.x,dy=p.y-dragN.y;
+    if(!dragN) return; var p=ptOf(e),dx=p.x-dragN.x,dy=p.y-dragN.y;
     if(Math.sqrt(dx*dx+dy*dy)>4) moved=true;
     dragN.vx=dx*.4; dragN.vy=dy*.4; dragN.x=p.x; dragN.y=p.y;
   });
@@ -530,25 +682,38 @@ window.addEventListener('DOMContentLoaded',function(){
 
   loadState(); rebuild(); requestAnimationFrame(draw);
   if(window.speechSynthesis){ speechSynthesis.onvoiceschanged=loadVoices; loadVoices(); }
-
   log('protocolo: '+location.protocol+' · '+(SR?'SpeechRecognition OK':'SEM SpeechRecognition'));
-  log('em iframe: '+(window.self!==window.top?'SIM (mic bloqueado)':'não'));
-  log('armazenamento: '+(lsOK?'localStorage OK':'memória volátil'));
+  log('em iframe: '+(window.self!==window.top?'SIM':'não')+' · '+(lsOK?'localStorage OK':'memória volátil'));
 
   orb.addEventListener('click',toggleVoice);
   $('gear').addEventListener('click',function(){openP('settings');});
-  $('btnChat').addEventListener('click',function(){openP('chat');});
+  $('btnChat').addEventListener('click',function(){ setFocus(null); openP('chat'); });
   $('btnGmail').addEventListener('click',runGmailCleanup);
   $('btnCloseSheet').addEventListener('click',closeSheet);
-  sendBtn.addEventListener('click',function(){sendMsg(inp.value);});
-  inp.addEventListener('input',function(){inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,110)+'px';});
-  inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg(inp.value);} });
+  $('focusClear').addEventListener('click',function(){ setFocus(null); });
+
+  $('actTalk').addEventListener('click',function(){
+    if(!sheetNode) return;
+    setFocus(sheetNode); closeSheet(); openP('chat');
+    bubble('sys','🧠 foco em: '+sheetNode.label);
+    inp.focus();
+  });
+  $('actAsk').addEventListener('click',function(){
+    if(!sheetNode) return;
+    setFocus(sheetNode); closeSheet();
+    sendMsg('Me atualize sobre '+sheetNode.label+'. Qual é a próxima ação?');
+  });
+
+  sendBtn.addEventListener('click',function(){ sendMsg(inp.value); });
+  inp.addEventListener('input',function(){ inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,110)+'px'; });
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(inp.value); } });
   Array.prototype.forEach.call(document.querySelectorAll('[data-close]'),function(b){
-    b.addEventListener('click',function(){closeP(b.getAttribute('data-close'));});
+    b.addEventListener('click',function(){ closeP(b.getAttribute('data-close')); });
   });
   $('swSpeak').addEventListener('click',function(){cfg.speak=!cfg.speak;setSw('swSpeak',cfg.speak);save();});
   $('swCont').addEventListener('click',function(){cfg.cont=!cfg.cont;setSw('swCont',cfg.cont);save();if(!cfg.cont)stopRec();else startRec();});
   $('swAuto').addEventListener('click',function(){cfg.auto=!cfg.auto;setSw('swAuto',cfg.auto);save();});
+  $('swLabels').addEventListener('click',function(){cfg.labels=!cfg.labels;setSw('swLabels',cfg.labels);save();});
   $('btnSaveCfg').addEventListener('click',function(){
     cfg.friday=$('cfgFriday').value.trim(); cfg.gmail=$('cfgGmail').value.trim(); save();
     log('config salva'); closeP('settings'); say('Configuração salva.');
@@ -557,12 +722,11 @@ window.addEventListener('DOMContentLoaded',function(){
     log('— teste de microfone —');
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ log('✖ getUserMedia indisponível'); return; }
     navigator.mediaDevices.getUserMedia({audio:true})
-      .then(function(s){ log('✔ permissão concedida'); s.getTracks().forEach(function(t){t.stop();}); startRec(); })
+      .then(function(s){ log('✔ permissão concedida'); micGranted=true; s.getTracks().forEach(function(t){t.stop();}); startRec(); })
       .catch(function(e){ log('✖ permissão negada: '+e.name); });
   });
   $('btnTestFriday').addEventListener('click',function(){
-    var u=$('cfgFriday').value.trim();
-    if(!u){ log('✖ URL da FRIDAY vazia'); return; }
+    var u=$('cfgFriday').value.trim(); if(!u){ log('✖ URL vazia'); return; }
     log('— teste FRIDAY —');
     fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:100,messages:[{role:'user',content:'diga ok'}]}),redirect:'follow'})
@@ -570,12 +734,20 @@ window.addEventListener('DOMContentLoaded',function(){
       .then(function(t){ log('resposta: '+t.slice(0,300)); })
       .catch(function(e){ log('✖ '+e.message); });
   });
+  $('btnTestGmail').addEventListener('click',function(){
+    var u=$('cfgGmail').value.trim(); if(!u){ log('✖ URL vazia'); return; }
+    log('— teste LimpezaGmail —');
+    fetch(u+(u.indexOf('?')>-1?'&':'?')+'teste=1&t='+Date.now(),{method:'GET',redirect:'follow'})
+      .then(function(r){ log('HTTP '+r.status+' · tipo '+r.type); return r.text(); })
+      .then(function(t){ log('resposta: '+t.slice(0,300)); })
+      .catch(function(e){ log('✖ bloqueado: '+e.message+' → será usado o plano B (aba nova)'); });
+  });
   $('btnReset').addEventListener('click',function(){
-    graph=JSON.parse(JSON.stringify(SEED)); chatHistory=[]; msgs.innerHTML='';
+    graph=JSON.parse(JSON.stringify(SEED)); chatHistory=[]; msgs.innerHTML=''; setFocus(null);
     save(); rebuild(); closeP('settings'); showCap('Cérebro reiniciado.');
   });
   document.addEventListener('visibilitychange',function(){
-    if(document.hidden){ stopRec(); if(window.speechSynthesis)speechSynthesis.cancel(); speaking=false; orb.classList.remove('speaking'); }
+    if(document.hidden){ stopRec(); if(window.speechSynthesis) speechSynthesis.cancel(); speaking=false; orb.classList.remove('speaking'); }
   });
 });
 </script>
