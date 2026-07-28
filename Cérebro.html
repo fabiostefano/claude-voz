@@ -59,6 +59,18 @@
   .msg.ai{align-self:flex-start;background:#141824;color:#C4CBDA;border-bottom-left-radius:4px;border:1px solid rgba(95,212,208,.12)}
   .msg.sys{align-self:center;color:#4FB08A;font-size:11px;text-align:center}
   .msg.err{align-self:center;background:rgba(220,80,80,.1);color:#E09090;font-size:12px}
+  #attachBar{display:none;gap:8px;padding:9px 13px 0;flex-wrap:wrap;flex-shrink:0}
+  #attachBar.on{display:flex}
+  .chip{display:flex;align-items:center;gap:7px;background:#161B28;border:1px solid rgba(95,212,208,.22);
+    border-radius:11px;padding:7px 9px;max-width:100%}
+  .chip img{width:30px;height:30px;object-fit:cover;border-radius:6px;flex-shrink:0}
+  .chip .ic{width:30px;height:30px;border-radius:6px;background:rgba(95,212,208,.13);display:flex;
+    align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .chip .nm{font-size:11.5px;color:#C4CBDA;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+  .chip .sz{font-size:10px;color:#5C6478}
+  .chip .x{background:none;border:none;color:#6B7488;font-size:15px;padding:0 2px}
+  #attachBtn{width:46px;height:46px;align-self:flex-end;border-radius:50%;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.1);color:#A6ADBD;font-size:19px;flex-shrink:0}
   #inputRow{display:flex;gap:8px;padding:11px 13px calc(13px + env(safe-area-inset-bottom));
     border-top:1px solid rgba(255,255,255,.07);flex-shrink:0}
   #inputRow textarea{flex:1;background:#12151F;border:1px solid rgba(255,255,255,.1);border-radius:14px;
@@ -135,10 +147,13 @@
   <div class="phead"><h2>Conversa</h2><button data-close="chat">✕</button></div>
   <div id="focusBar"><span id="focusLabel"></span><button id="focusClear">✕</button></div>
   <div id="msgs"></div>
+  <div id="attachBar"></div>
   <div id="inputRow">
-    <textarea id="inp" rows="1" placeholder="Escreve ou usa o orbe pra falar…"></textarea>
+    <button id="attachBtn">📎</button>
+    <textarea id="inp" rows="1" placeholder="Escreve, anexa ou usa o orbe…"></textarea>
     <button id="sendBtn">➤</button>
   </div>
+  <input type="file" id="fileInput" multiple accept="image/*,application/pdf,.txt,.md,.csv,.json,.js,.gs,.html,.css,.xml,.log" style="display:none">
 </div>
 
 <div class="panel" id="settings">
@@ -542,6 +557,83 @@ function runGmailCleanup(){
 }
 
 /* ═════ CONVERSA ═════ */
+/* ─── ANEXOS ─── */
+var anexos=[];                 // {name,size,kind,media,data,preview}
+var MAX_ARQ=4*1024*1024;       // 4 MB por arquivo
+var MAX_TOTAL=8*1024*1024;     // 8 MB no total
+
+function fmtSz(b){ return b<1024?b+' B':(b<1048576?(b/1024).toFixed(0)+' KB':(b/1048576).toFixed(1)+' MB'); }
+function totalAnexos(){ var t=0; anexos.forEach(function(a){t+=a.size;}); return t; }
+
+function lerArquivo(file){
+  return new Promise(function(res,rej){
+    if(file.size>MAX_ARQ){ rej(new Error(file.name+' tem '+fmtSz(file.size)+' — o limite é 4 MB')); return; }
+    if(totalAnexos()+file.size>MAX_TOTAL){ rej(new Error('total de anexos passou de 8 MB')); return; }
+    var tipo=file.type||'';
+    var ehImg=/^image\//.test(tipo);
+    var ehPdf=tipo==='application/pdf'||/\.pdf$/i.test(file.name);
+    var r=new FileReader();
+    r.onerror=function(){ rej(new Error('não consegui ler '+file.name)); };
+    if(ehImg||ehPdf){
+      r.onload=function(){
+        var b64=String(r.result).split(',')[1];
+        res({ name:file.name, size:file.size,
+              kind:ehImg?'image':'document',
+              media:ehImg?(tipo||'image/jpeg'):'application/pdf',
+              data:b64, preview:ehImg?r.result:null });
+      };
+      r.readAsDataURL(file);
+    } else {
+      r.onload=function(){
+        var txt=String(r.result);
+        if(txt.length>120000) txt=txt.slice(0,120000)+'\n…(arquivo truncado)';
+        res({ name:file.name, size:file.size, kind:'text', media:'text/plain', data:txt, preview:null });
+      };
+      r.readAsText(file);
+    }
+  });
+}
+function renderAnexos(){
+  var bar=$('attachBar');
+  bar.innerHTML='';
+  bar.classList.toggle('on',anexos.length>0);
+  anexos.forEach(function(a,i){
+    var c=document.createElement('div'); c.className='chip';
+    if(a.preview){ var im=document.createElement('img'); im.src=a.preview; c.appendChild(im); }
+    else { var ic=document.createElement('div'); ic.className='ic';
+      ic.textContent=a.kind==='document'?'📄':'📝'; c.appendChild(ic); }
+    var box=document.createElement('div');
+    var nm=document.createElement('div'); nm.className='nm'; nm.textContent=a.name;
+    var sz=document.createElement('div'); sz.className='sz'; sz.textContent=fmtSz(a.size);
+    box.appendChild(nm); box.appendChild(sz); c.appendChild(box);
+    var x=document.createElement('button'); x.className='x'; x.textContent='✕';
+    x.addEventListener('click',function(){ anexos.splice(i,1); renderAnexos(); });
+    c.appendChild(x);
+    bar.appendChild(c);
+  });
+}
+function addArquivos(files){
+  var lista=Array.prototype.slice.call(files);
+  lista.reduce(function(p,f){
+    return p.then(function(){
+      return lerArquivo(f).then(function(a){ anexos.push(a); renderAnexos(); log('anexo: '+a.name+' ('+a.kind+', '+fmtSz(a.size)+')'); })
+        .catch(function(e){ bubble('err',e.message); log('✖ anexo: '+e.message); });
+    });
+  },Promise.resolve());
+}
+// monta os blocos de conteúdo da API a partir dos anexos + texto
+function blocosDaMensagem(texto){
+  if(!anexos.length) return texto;
+  var blocos=[];
+  anexos.forEach(function(a){
+    if(a.kind==='image') blocos.push({type:'image',source:{type:'base64',media_type:a.media,data:a.data}});
+    else if(a.kind==='document') blocos.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:a.data}});
+    else blocos.push({type:'text',text:'--- arquivo: '+a.name+' ---\n'+a.data+'\n--- fim ---'});
+  });
+  blocos.push({type:'text',text:texto||'Analise o material anexado.'});
+  return blocos;
+}
+
 function bubble(cls,text){ var d=document.createElement('div'); d.className='msg '+cls; d.textContent=text;
   msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
 function renderMsgs(){ msgs.innerHTML=''; chatHistory.forEach(function(m){bubble(m.role==='user'?'user':'ai',m.content);}); msgs.scrollTop=msgs.scrollHeight; }
@@ -567,6 +659,9 @@ function SYSTEM(){
   'Grafo atual (id|label|cluster):\n'+graphSummary()+'\n\n'+
   'Clusters válidos: vale, calango, dev, tri, gmail, novo.\n'+
   'Ação disponível: "limpar_gmail". Use só se ele pedir claramente.\n\n'+
+  'ANEXOS: quando vierem imagens, PDFs ou arquivos de texto, analise o conteúdo e responda sobre ele. '+
+  'Se o material for relevante para um projeto do Fábio, crie um nó novo com o resumo no campo detail. '+
+  'Documentos técnicos (P&ID, relatórios, planilhas) vão no cluster vale; texto do livro vai em calango; código vai em dev.\n\n'+
   'Responda APENAS com JSON válido, sem markdown:\n'+
   '{"reply":"resposta falada","action":null,"newNodes":[{"id":"slug","label":"Nome","cluster":"dev","detail":"1-2 frases","connectTo":["id-existente"]}],"newEdges":[]}\n\n'+
   'Só crie newNodes para temas realmente novos. Ids não podem repetir os existentes.';
@@ -605,14 +700,29 @@ function extractReply(raw){
   return {reply:s||'Não entendi. Repete?',action:null,newNodes:[],newEdges:[]};
 }
 function sendMsg(text){
-  text=String(text||'').trim(); if(!text||busy) return;
+  text=String(text||'').trim();
+  if((!text&&!anexos.length)||busy) return;
+  if(!text) text='Analise o material anexado.';
   inp.value=''; inp.style.height='auto'; openP('chat');
-  chatHistory.push({role:'user',content:text}); bubble('user',text);
+
+  // o histórico guarda só o rótulo — base64 não cabe no localStorage
+  var rotulo=text+(anexos.length?'\n📎 '+anexos.map(function(a){return a.name;}).join(', '):'');
+  chatHistory.push({role:'user',content:rotulo}); bubble('user',rotulo);
+
   busy=true; sendBtn.disabled=true; stopRec(); orb.classList.add('thinking'); energy=1;
   var typing=bubble('ai',''); typing.innerHTML='<span class="typing"><span></span><span></span><span></span></span>';
   var list=safeMessages();
   var done=function(){ busy=false; sendBtn.disabled=false; orb.classList.remove('thinking'); };
   if(!list){ typing.remove(); bubble('err','Histórico inválido.'); done(); return; }
+
+  // a última mensagem carrega os anexos de verdade
+  if(anexos.length){
+    var peso=Math.round(totalAnexos()/1024);
+    bubble('sys','📎 enviando '+anexos.length+' arquivo(s) · '+peso+' KB');
+    list[list.length-1]={role:'user',content:blocosDaMensagem(text)};
+    anexos=[]; renderAnexos();
+  }
+
   callBrain({model:'claude-sonnet-4-6',max_tokens:1000,system:SYSTEM(),messages:list})
     .then(function(data){
       var raw=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
@@ -704,6 +814,21 @@ window.addEventListener('DOMContentLoaded',function(){
     sendMsg('Me atualize sobre '+sheetNode.label+'. Qual é a próxima ação?');
   });
 
+  $('attachBtn').addEventListener('click',function(){ $('fileInput').click(); });
+  $('fileInput').addEventListener('change',function(e){
+    if(e.target.files&&e.target.files.length) addArquivos(e.target.files);
+    e.target.value='';
+  });
+  inp.addEventListener('paste',function(e){
+    var it=e.clipboardData&&e.clipboardData.files;
+    if(it&&it.length){ e.preventDefault(); addArquivos(it); }
+  });
+  ['dragover','drop'].forEach(function(ev){
+    $('chat').addEventListener(ev,function(e){
+      e.preventDefault();
+      if(ev==='drop'&&e.dataTransfer&&e.dataTransfer.files.length) addArquivos(e.dataTransfer.files);
+    });
+  });
   sendBtn.addEventListener('click',function(){ sendMsg(inp.value); });
   inp.addEventListener('input',function(){ inp.style.height='auto'; inp.style.height=Math.min(inp.scrollHeight,110)+'px'; });
   inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(inp.value); } });
