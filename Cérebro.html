@@ -59,6 +59,9 @@
   .msg.ai{align-self:flex-start;background:#141824;color:#C4CBDA;border-bottom-left-radius:4px;border:1px solid rgba(95,212,208,.12)}
   .msg.sys{align-self:center;color:#4FB08A;font-size:11px;text-align:center}
   .msg.err{align-self:center;background:rgba(220,80,80,.1);color:#E09090;font-size:12px}
+  .msg.fileMsg{display:flex;align-items:center;gap:11px;justify-content:space-between}
+  .fileMsg .fnm{font-size:13px;color:#E8EEF5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fileMsg .fdl{background:#5FD4D0;color:#06080E;border:none;border-radius:9px;padding:7px 13px;font-size:12px;font-weight:600;flex-shrink:0}
   #attachBar{display:none;gap:8px;padding:9px 13px 0;flex-wrap:wrap;flex-shrink:0}
   #attachBar.on{display:flex}
   .chip{display:flex;align-items:center;gap:7px;background:#161B28;border:1px solid rgba(95,212,208,.22);
@@ -662,8 +665,22 @@ function SYSTEM(){
   'ANEXOS: quando vierem imagens, PDFs ou arquivos de texto, analise o conteúdo e responda sobre ele. '+
   'Se o material for relevante para um projeto do Fábio, crie um nó novo com o resumo no campo detail. '+
   'Documentos técnicos (P&ID, relatórios, planilhas) vão no cluster vale; texto do livro vai em calango; código vai em dev.\n\n'+
+  'DESENHOS E IMAGENS: você desenha escrevendo SVG puro, que o app rasteriza e embute nos arquivos. '+
+  'Coloque as figuras no array "images": [{"id":"fig1","caption":"Figura 1 — descrição","svg":"<svg viewBox=\\"0 0 900 600\\" width=\\"900\\" height=\\"600\\">…</svg>"}]. '+
+  'No "content" do PDF, escreva [[fig1]] numa linha sozinha onde a figura deve entrar. Em slides, use "image":"fig1".\n'+
+  'Regras do SVG: sempre viewBox mais width e height numéricos; fundo branco explícito com um <rect>; só recursos nativos (sem imagens externas, sem CSS externo, sem <foreignObject>); '+
+  'fonte "Arial, sans-serif" e stroke em cores sólidas.\n'+
+  'Para desenho técnico de engenharia siga as convenções: vistas frontal e lateral lado a lado, linhas de cota com setas e extensão, '+
+  'texto de dimensão em mm, legenda no canto inferior direito com título, escala e data, hachura em cortes, '+
+  'e chamadas numeradas em balões ligando aos componentes. Cite as normas aplicáveis (NR-10, NR-12, NR-35, NBR) num quadro de notas. '+
+  'Para diagramas elétricos e P&ID use os símbolos padrão desenhados em <path> e <circle>, com tags nos equipamentos.\n\n'+
+  'CRIAR ARQUIVOS: quando o Fábio pedir um documento, relatório, apresentação, planilha, desenho ou anotação, '+
+  'preencha o campo "file" e mantenha o "reply" curto (só avise que gerou). Tipos: pdf, pptx, docx, txt, md, csv, html, svg, png.\n'+
+  'Para pdf/docx/txt/md/csv/html use: {"type":"pdf","name":"relatorio.pdf","title":"Título","content":"texto completo, use # para títulos e - para tópicos"}\n'+
+  'Para pptx use: {"type":"pptx","name":"deck.pptx","title":"Título da capa","subtitle":"…","slides":[{"title":"Slide 1","bullets":["ponto","ponto"],"notes":"nota do orador"}]}\n'+
+  'Escreva o conteúdo completo dentro de "content" ou "slides" — não resuma nem prometa mandar depois. Se não for pedido arquivo, "file":null.\n\n'+
   'Responda APENAS com JSON válido, sem markdown:\n'+
-  '{"reply":"resposta falada","action":null,"newNodes":[{"id":"slug","label":"Nome","cluster":"dev","detail":"1-2 frases","connectTo":["id-existente"]}],"newEdges":[]}\n\n'+
+  '{"reply":"resposta falada","action":null,"file":null,"newNodes":[{"id":"slug","label":"Nome","cluster":"dev","detail":"1-2 frases","connectTo":["id-existente"]}],"newEdges":[]}\n\n'+
   'Só crie newNodes para temas realmente novos. Ids não podem repetir os existentes.';
 }
 function safeMessages(){
@@ -692,6 +709,257 @@ function callBrain(body){
       return {content:[{type:'text',text:JSON.stringify(j)}]};
     });
 }
+/* ─── GERAÇÃO DE ARQUIVOS ─── */
+var LIBS={
+  jspdf:{url:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',check:function(){return window.jspdf&&window.jspdf.jsPDF;}},
+  pptx :{url:'https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js',check:function(){return window.PptxGenJS;}},
+  docx :{url:'https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/index.umd.min.js',check:function(){return window.docx;}}
+};
+function carregarLib(nome){
+  var L=LIBS[nome];
+  return new Promise(function(res,rej){
+    if(L.check()){ res(); return; }
+    var s=document.createElement('script');
+    s.src=L.url;
+    s.onload=function(){ L.check()?res():rej(new Error(nome+' carregou mas não inicializou')); };
+    s.onerror=function(){ rej(new Error('não consegui baixar a biblioteca '+nome)); };
+    document.head.appendChild(s);
+    log('baixando lib '+nome);
+  });
+}
+function baixarBlob(blob,nome){
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download=nome; a.style.display='none';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },4000);
+  log('arquivo gerado: '+nome);
+}
+function bolhaArquivo(nome,fn){
+  var d=document.createElement('div'); d.className='msg ai fileMsg';
+  var t=document.createElement('div'); t.className='fnm'; t.textContent='📄 '+nome;
+  var b=document.createElement('button'); b.className='fdl'; b.textContent='Baixar';
+  b.addEventListener('click',fn);
+  d.appendChild(t); d.appendChild(b);
+  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+}
+function sanitizaNome(n,ext){
+  n=String(n||'documento').replace(/[\/\\:*?"<>|]/g,'-').trim();
+  if(n.toLowerCase().slice(-ext.length-1)!=='.'+ext) n+='.'+ext;
+  return n;
+}
+
+/* ─── DESENHOS VETORIAIS (SVG → PNG) ─── */
+function normalizaSVG(svg){
+  svg=String(svg).trim();
+  var i=svg.indexOf('<svg');
+  if(i>0) svg=svg.slice(i);
+  if(svg.indexOf('xmlns=')===-1) svg=svg.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
+  // garante largura/altura explícitas a partir do viewBox
+  if(!/\swidth=/.test(svg)){
+    var vb=svg.match(/viewBox=["']\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/);
+    if(vb) svg=svg.replace('<svg','<svg width="'+vb[1]+'" height="'+vb[2]+'"');
+  }
+  return svg;
+}
+function medeSVG(svg){
+  var w=svg.match(/\swidth=["']([\d.]+)/), h=svg.match(/\sheight=["']([\d.]+)/);
+  var vb=svg.match(/viewBox=["']\s*[\d.-]+\s+[\d.-]+\s+([\d.]+)\s+([\d.]+)/);
+  return { w:parseFloat(w?w[1]:(vb?vb[1]:800)), h:parseFloat(h?h[1]:(vb?vb[2]:600)) };
+}
+function svgParaPNG(svg,escala){
+  return new Promise(function(res,rej){
+    svg=normalizaSVG(svg);
+    var d=medeSVG(svg);
+    var k=escala||Math.min(3,Math.max(1.5,1600/Math.max(d.w,1)));
+    var blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    var img=new Image();
+    var falhou=setTimeout(function(){ URL.revokeObjectURL(url); rej(new Error('SVG demorou demais para renderizar')); },12000);
+    img.onload=function(){
+      clearTimeout(falhou);
+      try{
+        var cv=document.createElement('canvas');
+        cv.width=Math.round(d.w*k); cv.height=Math.round(d.h*k);
+        var c2=cv.getContext('2d');
+        c2.fillStyle='#FFFFFF'; c2.fillRect(0,0,cv.width,cv.height);
+        c2.drawImage(img,0,0,cv.width,cv.height);
+        URL.revokeObjectURL(url);
+        res({ dataURL:cv.toDataURL('image/png'), w:d.w, h:d.h });
+      }catch(e){ URL.revokeObjectURL(url); rej(e); }
+    };
+    img.onerror=function(){ clearTimeout(falhou); URL.revokeObjectURL(url); rej(new Error('SVG inválido')); };
+    img.src=url;
+  });
+}
+// rasteriza todas as figuras da spec e devolve um mapa id → png
+function prepararFiguras(spec){
+  var figs=spec.images||spec.figuras||[];
+  if(!figs.length) return Promise.resolve({});
+  bubble('sys','✏️ renderizando '+figs.length+' desenho(s)…');
+  var mapa={};
+  return figs.reduce(function(p,f,idx){
+    return p.then(function(){
+      var id=f.id||('fig'+(idx+1));
+      return svgParaPNG(f.svg).then(function(png){
+        mapa[id]={png:png,caption:f.caption||''};
+        log('figura ok: '+id+' ('+Math.round(png.w)+'x'+Math.round(png.h)+')');
+      }).catch(function(e){ log('✖ figura '+id+': '+e.message); bubble('err','Figura '+id+': '+e.message); });
+    });
+  },Promise.resolve()).then(function(){ return mapa; });
+}
+
+function gerarPDF(spec){
+  return Promise.all([carregarLib('jspdf'),prepararFiguras(spec)]).then(function(r){
+    var figs=r[1];
+    var jsPDF=window.jspdf.jsPDF;
+    var doc=new jsPDF({unit:'mm',format:'a4'});
+    var M=18, L=180, y=M;
+    if(spec.title){
+      doc.setFont('helvetica','bold'); doc.setFontSize(16);
+      doc.text(doc.splitTextToSize(spec.title,L),M,y);
+      y+=10+(doc.splitTextToSize(spec.title,L).length-1)*7;
+      doc.setDrawColor(180); doc.line(M,y,M+L,y); y+=8;
+    }
+    doc.setFont('helvetica','normal'); doc.setFontSize(11);
+    var colocaFig=function(id){
+      var f=figs[id]; if(!f) return;
+      var maxW=L, escalaW=maxW, escalaH=f.png.h*(maxW/f.png.w);
+      if(escalaH>210){ escalaH=210; escalaW=f.png.w*(210/f.png.h); }
+      if(y+escalaH>275){ doc.addPage(); y=M; }
+      doc.addImage(f.png.dataURL,'PNG',M+(L-escalaW)/2,y,escalaW,escalaH);
+      y+=escalaH+4;
+      if(f.caption){
+        doc.setFont('helvetica','italic'); doc.setFontSize(9); doc.setTextColor(90);
+        doc.splitTextToSize(f.caption,L).forEach(function(ln){ doc.text(ln,M,y); y+=4.4; });
+        doc.setTextColor(0); doc.setFont('helvetica','normal'); doc.setFontSize(11);
+      }
+      y+=5;
+    };
+    String(spec.content||'').split('\n').forEach(function(par){
+      var mk=par.match(/^\s*\[\[([\w-]+)\]\]\s*$/);
+      if(mk){ colocaFig(mk[1]); return; }
+      if(!par.trim()){ y+=4; return; }
+      var negrito=/^#{1,3}\s/.test(par);
+      var txt=par.replace(/^#{1,3}\s/,'').replace(/^[-*]\s/,'•  ');
+      doc.setFont('helvetica',negrito?'bold':'normal');
+      doc.setFontSize(negrito?13:11);
+      var linhas=doc.splitTextToSize(txt,L);
+      linhas.forEach(function(ln){
+        if(y>275){ doc.addPage(); y=M; }
+        doc.text(ln,M,y); y+=negrito?7:5.6;
+      });
+      if(negrito) y+=2;
+    });
+    // figuras não referenciadas no texto vão para o fim
+    Object.keys(figs).forEach(function(id){
+      if(String(spec.content||'').indexOf('[['+id+']]')===-1) colocaFig(id);
+    });
+    var nome=sanitizaNome(spec.name||spec.title,'pdf');
+    baixarBlob(doc.output('blob'),nome);
+    return nome;
+  });
+}
+function gerarPPTX(spec){
+  return Promise.all([carregarLib('pptx'),prepararFiguras(spec)]).then(function(r){
+    var figs=r[1];
+    var p=new window.PptxGenJS();
+    p.layout='LAYOUT_16x9';
+    var slides=spec.slides||[{title:spec.title||'Slide',bullets:String(spec.content||'').split('\n').filter(Boolean)}];
+    if(spec.title&&spec.slides){
+      var capa=p.addSlide();
+      capa.background={color:'0E1520'};
+      capa.addText(spec.title,{x:0.6,y:2.2,w:8.8,h:1.2,fontSize:32,bold:true,color:'5FD4D0',fontFace:'Arial'});
+      if(spec.subtitle) capa.addText(spec.subtitle,{x:0.6,y:3.4,w:8.8,fontSize:15,color:'A6ADBD',fontFace:'Arial'});
+    }
+    slides.forEach(function(s){
+      var sl=p.addSlide();
+      sl.background={color:'FFFFFF'};
+      sl.addText(s.title||'',{x:0.5,y:0.4,w:9,h:0.8,fontSize:24,bold:true,color:'1E3A5F',fontFace:'Arial'});
+      sl.addShape(p.ShapeType.line,{x:0.5,y:1.25,w:9,h:0,line:{color:'5FD4D0',width:2}});
+      var fig=s.image&&figs[s.image]?figs[s.image]:null;
+      var itens=(s.bullets||[]).map(function(b){ return {text:String(b),options:{bullet:true,breakLine:true}}; });
+      if(fig){
+        var cx=itens.length?5.05:0.5, cw=itens.length?4.45:9, ch=itens.length?3.9:4.1;
+        var prop=fig.png.w/fig.png.h, lw=cw, lh=cw/prop;
+        if(lh>ch){ lh=ch; lw=ch*prop; }
+        sl.addImage({ data:fig.png.dataURL, x:cx+(cw-lw)/2, y:1.6+(ch-lh)/2, w:lw, h:lh });
+        if(fig.caption) sl.addText(fig.caption,{x:cx,y:5.55,w:cw,fontSize:9,italic:true,color:'6B7488',fontFace:'Arial',align:'center'});
+        if(itens.length) sl.addText(itens,{x:0.6,y:1.6,w:4.2,h:3.9,fontSize:13,color:'2B3445',fontFace:'Arial',lineSpacingMultiple:1.25});
+      } else if(itens.length){
+        sl.addText(itens,{x:0.7,y:1.6,w:8.6,h:4,fontSize:15,color:'2B3445',fontFace:'Arial',lineSpacingMultiple:1.3});
+      }
+      if(s.notes) sl.addNotes(String(s.notes));
+    });
+    var nome=sanitizaNome(spec.name||spec.title,'pptx');
+    return p.write('blob').then(function(blob){ baixarBlob(blob,nome); return nome; });
+  });
+}
+function gerarDOCX(spec){
+  return carregarLib('docx').then(function(){
+    var D=window.docx;
+    var paras=[];
+    if(spec.title) paras.push(new D.Paragraph({text:spec.title,heading:D.HeadingLevel.HEADING_1}));
+    String(spec.content||'').split('\n').forEach(function(l){
+      if(!l.trim()){ paras.push(new D.Paragraph('')); return; }
+      if(/^###\s/.test(l)) paras.push(new D.Paragraph({text:l.replace(/^###\s/,''),heading:D.HeadingLevel.HEADING_3}));
+      else if(/^##\s/.test(l)) paras.push(new D.Paragraph({text:l.replace(/^##\s/,''),heading:D.HeadingLevel.HEADING_2}));
+      else if(/^#\s/.test(l)) paras.push(new D.Paragraph({text:l.replace(/^#\s/,''),heading:D.HeadingLevel.HEADING_1}));
+      else if(/^[-*]\s/.test(l)) paras.push(new D.Paragraph({text:l.replace(/^[-*]\s/,''),bullet:{level:0}}));
+      else paras.push(new D.Paragraph(l));
+    });
+    var doc=new D.Document({sections:[{children:paras}]});
+    var nome=sanitizaNome(spec.name||spec.title,'docx');
+    return D.Packer.toBlob(doc).then(function(blob){ baixarBlob(blob,nome); return nome; });
+  });
+}
+var MIMES={txt:'text/plain',md:'text/markdown',csv:'text/csv',html:'text/html',json:'application/json',js:'text/javascript',gs:'text/plain'};
+function gerarTexto(spec,ext){
+  var nome=sanitizaNome(spec.name||spec.title,ext);
+  var corpo=(ext==='md'&&spec.title&&String(spec.content||'').indexOf('#')!==0)
+    ? '# '+spec.title+'\n\n'+spec.content : String(spec.content||'');
+  baixarBlob(new Blob([corpo],{type:(MIMES[ext]||'text/plain')+';charset=utf-8'}),nome);
+  return Promise.resolve(nome);
+}
+function gerarSVG(spec){
+  var svg=normalizaSVG((spec.images&&spec.images[0]&&spec.images[0].svg)||spec.svg||spec.content||'');
+  var nome=sanitizaNome(spec.name||spec.title,'svg');
+  baixarBlob(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),nome);
+  return Promise.resolve(nome);
+}
+function gerarPNG(spec){
+  var svg=(spec.images&&spec.images[0]&&spec.images[0].svg)||spec.svg||spec.content||'';
+  return svgParaPNG(svg,3).then(function(png){
+    var nome=sanitizaNome(spec.name||spec.title,'png');
+    return fetch(png.dataURL).then(function(r){return r.blob();})
+      .then(function(b){ baixarBlob(b,nome); return nome; });
+  });
+}
+function gerarArquivo(spec){
+  if(!spec||!spec.type) return Promise.reject(new Error('spec sem tipo'));
+  var t=String(spec.type).toLowerCase();
+  bubble('sys','⚙ gerando '+t.toUpperCase()+'…');
+  var p;
+  if(t==='pdf') p=gerarPDF(spec);
+  else if(t==='pptx'||t==='ppt') p=gerarPPTX(spec);
+  else if(t==='docx'||t==='doc') p=gerarDOCX(spec);
+  else if(t==='svg') p=gerarSVG(spec);
+  else if(t==='png'||t==='jpg'||t==='jpeg'||t==='imagem'||t==='desenho') p=gerarPNG(spec);
+  else if(MIMES[t]) p=gerarTexto(spec,t);
+  else p=gerarTexto(spec,'txt');
+  return p.then(function(nome){
+    bolhaArquivo(nome,function(){ gerarArquivo(spec); });
+    addNode({id:'arq'+Date.now().toString(36),label:nome,cluster:spec.cluster||'novo',
+      detail:(spec.title||nome)+' — gerado em '+new Date().toLocaleString('pt-BR')+'.',
+      connectTo:[focusNode?focusNode.id:'core']});
+    save();
+    return nome;
+  }).catch(function(e){
+    log('✖ arquivo: '+e.message);
+    bubble('err','Não consegui gerar o arquivo: '+e.message);
+  });
+}
+
 function extractReply(raw){
   var s=String(raw).replace(/```json/gi,'').replace(/```/g,'').trim();
   try{ var o=JSON.parse(s); if(typeof o.reply==='string') return o; }catch(e){}
@@ -723,11 +991,12 @@ function sendMsg(text){
     anexos=[]; renderAnexos();
   }
 
-  callBrain({model:'claude-sonnet-4-6',max_tokens:1000,system:SYSTEM(),messages:list})
+  callBrain({model:'claude-sonnet-4-6',max_tokens:16000,system:SYSTEM(),messages:list})
     .then(function(data){
       var raw=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
       var p=extractReply(raw);
       typing.remove(); bubble('ai',p.reply);
+      if(p.file) gerarArquivo(p.file);
       chatHistory.push({role:'assistant',content:p.reply});
       var changed=false;
       if(cfg.auto){
