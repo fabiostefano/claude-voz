@@ -200,7 +200,7 @@ window.addEventListener('unhandledrejection',function(e){ log('✖ promise: '+(e
 
 /* ═════ ESTADO ═════ */
 var cfg={friday:'',gmail:'',speak:true,cont:false,auto:true,labels:false};
-var graph=null,chatHistory=[],busy=false,listening=false,speaking=false,pending=false,micGranted=false;
+var graph=null,chatHistory=[],memoria='',busy=false,listening=false,speaking=false,pending=false,micGranted=false;
 var focusNode=null;
 
 /* lobos: cada cluster tem uma âncora dentro da silhueta (coords normalizadas 0..100 x 0..80) */
@@ -249,6 +249,7 @@ function loadState(){
   try{ graph=JSON.parse(stGet('fr-graph')||'null'); }catch(e){ graph=null; }
   if(!graph||!graph.nodes||!graph.nodes.length) graph=JSON.parse(JSON.stringify(SEED));
   try{ chatHistory=JSON.parse(stGet('fr-chat')||'[]')||[]; }catch(e){ chatHistory=[]; }
+  memoria=stGet('fr-memoria')||'';
   $('cfgFriday').value=cfg.friday||''; $('cfgGmail').value=cfg.gmail||'';
   setSw('swSpeak',cfg.speak); setSw('swCont',cfg.cont); setSw('swAuto',cfg.auto); setSw('swLabels',cfg.labels);
 }
@@ -256,6 +257,7 @@ function save(){
   stSet('fr-graph',JSON.stringify(graph));
   stSet('fr-chat',JSON.stringify(chatHistory.slice(-40)));
   stSet('fr-cfg',JSON.stringify(cfg));
+  stSet('fr-memoria',memoria||'');
   upStatus();
 }
 function upStatus(){ statusEl.textContent=graph.nodes.length+' nós · '+graph.edges.length+' sinapses'+(cfg.friday?' · FRIDAY':''); }
@@ -659,6 +661,7 @@ function SYSTEM(){
   }
   return 'Você é FRIDAY, o cérebro do Fábio Sobral — engenheiro eletricista na Vale (Porto São Luís / EFC Carajás), autor de "Resistente como um Calango", triatleta Master, e dev que constrói apps direto do celular.\n\n'+
   'Fábio tem TDAH: ação concreta primeiro, uma coisa de cada vez, direto, sem bajulação. Português brasileiro. As respostas serão FALADAS: frases curtas, sem markdown, no máximo 3 frases.\n'+foco+'\n'+
+  (memoria?'MEMÓRIA PERSISTENTE (o que você já sabe de sessões anteriores — trate como fato):\n'+memoria+'\n\n':'')+
   'Grafo atual (id|label|cluster):\n'+graphSummary()+'\n\n'+
   'Clusters válidos: vale, calango, dev, tri, gmail, novo.\n'+
   'Ação disponível: "limpar_gmail". Use só se ele pedir claramente.\n\n'+
@@ -679,8 +682,12 @@ function SYSTEM(){
   'Para pdf/docx/txt/md/csv/html use: {"type":"pdf","name":"relatorio.pdf","title":"Título","content":"texto completo, use # para títulos e - para tópicos"}\n'+
   'Para pptx use: {"type":"pptx","name":"deck.pptx","title":"Título da capa","subtitle":"…","slides":[{"title":"Slide 1","bullets":["ponto","ponto"],"notes":"nota do orador"}]}\n'+
   'Escreva o conteúdo completo dentro de "content" ou "slides" — não resuma nem prometa mandar depois. Se não for pedido arquivo, "file":null.\n\n'+
+  'MEMÓRIA: o campo "memoria" é o seu caderno permanente entre sessões. Quando a conversa trouxer fato novo que valha lembrar '+
+  '(decisão, status de projeto, preferência, pendência resolvida), devolva a MEMÓRIA COMPLETA reescrita e atualizada nesse campo: '+
+  'itens curtos, um por linha, máximo 1800 caracteres — resuma o antigo se precisar de espaço. Se nada mudou, "memoria":null. '+
+  'Nunca apague pendências não resolvidas.\n\n'+
   'Responda APENAS com JSON válido, sem markdown:\n'+
-  '{"reply":"resposta falada","action":null,"file":null,"newNodes":[{"id":"slug","label":"Nome","cluster":"dev","detail":"1-2 frases","connectTo":["id-existente"]}],"newEdges":[]}\n\n'+
+  '{"reply":"resposta falada","action":null,"file":null,"memoria":null,"newNodes":[{"id":"slug","label":"Nome","cluster":"dev","detail":"1-2 frases","connectTo":["id-existente"]}],"newEdges":[]}\n\n'+
   'Só crie newNodes para temas realmente novos. Ids não podem repetir os existentes.';
 }
 function safeMessages(){
@@ -1023,6 +1030,10 @@ function sendMsg(text){
       typing.remove(); bubble('ai',p.reply);
       if(p.file) gerarArquivo(p.file);
       chatHistory.push({role:'assistant',content:p.reply});
+      if(typeof p.memoria==='string'&&p.memoria.trim()){
+        memoria=p.memoria.trim().slice(0,2000);
+        log('memória atualizada ('+memoria.length+' chars)');
+      }
       var changed=false;
       if(cfg.auto){
         (p.newNodes||[]).forEach(function(n){ if(addNode(n)) changed=true; });
@@ -1162,6 +1173,7 @@ window.addEventListener('DOMContentLoaded',function(){
       .catch(function(e){ log('✖ bloqueado: '+e.message+' → será usado o plano B (aba nova)'); });
   });
   $('btnReset').addEventListener('click',function(){
+    memoria='';
     graph=JSON.parse(JSON.stringify(SEED)); chatHistory=[]; msgs.innerHTML=''; setFocus(null);
     save(); rebuild(); closeP('settings'); showCap('Cérebro reiniciado.');
   });
