@@ -171,6 +171,15 @@
       <input id="cfgGmail" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
       <small>Se a chamada direta for bloqueada pelo navegador, o app abre o script numa aba nova automaticamente.</small>
     </div>
+    <div class="fld">
+      <label>URL do friday-email</label>
+      <input id="cfgEmail" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+      <small>Script separado que envia e-mails com anexos. Peça o código ao Claude se ainda não criou.</small>
+    </div>
+    <div class="fld">
+      <label>Chave do friday-email</label>
+      <input id="cfgChave" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="senha definida no script">
+    </div>
     <div class="toggleRow"><span>Falar as respostas</span><button class="sw on" id="swSpeak"></button></div>
     <div class="toggleRow"><span>Escuta contínua</span><button class="sw" id="swCont"></button></div>
     <div class="toggleRow"><span>Criar nós automaticamente</span><button class="sw on" id="swAuto"></button></div>
@@ -199,7 +208,7 @@ window.onerror=function(m,s,l){ log('✖ '+m+' @'+l); return false; };
 window.addEventListener('unhandledrejection',function(e){ log('✖ promise: '+(e.reason&&e.reason.message||e.reason)); });
 
 /* ═════ ESTADO ═════ */
-var cfg={friday:'',gmail:'',speak:true,cont:false,auto:true,labels:false};
+var cfg={friday:'',gmail:'',email:'',chave:'',speak:true,cont:false,auto:true,labels:false};
 var graph=null,chatHistory=[],memoria='',busy=false,listening=false,speaking=false,pending=false,micGranted=false;
 var focusNode=null;
 
@@ -251,6 +260,7 @@ function loadState(){
   try{ chatHistory=JSON.parse(stGet('fr-chat')||'[]')||[]; }catch(e){ chatHistory=[]; }
   memoria=stGet('fr-memoria')||'';
   $('cfgFriday').value=cfg.friday||''; $('cfgGmail').value=cfg.gmail||'';
+  $('cfgEmail').value=cfg.email||''; $('cfgChave').value=cfg.chave||'';
   setSw('swSpeak',cfg.speak); setSw('swCont',cfg.cont); setSw('swAuto',cfg.auto); setSw('swLabels',cfg.labels);
 }
 function save(){
@@ -561,6 +571,46 @@ function runGmailCleanup(){
     });
 }
 
+/* ═════ E-MAIL E WHATSAPP ═════ */
+function blobParaBase64(blob){
+  return new Promise(function(res,rej){
+    var r=new FileReader();
+    r.onload=function(){ res(String(r.result).split(',')[1]); };
+    r.onerror=function(){ rej(new Error('falha ao ler o blob')); };
+    r.readAsDataURL(blob);
+  });
+}
+function enviarEmail(a){
+  if(!cfg.email){ bubble('err','Configure a URL do friday-email na ⚙.'); say('Falta configurar o servidor de e-mail.'); openP('settings'); return; }
+  bubble('sys','✉️ enviando e-mail…');
+  var payload={chave:cfg.chave||'',assunto:a.assunto||'Mensagem da FRIDAY',corpo:a.corpo||'',para:a.para||''};
+  var prep=Promise.resolve();
+  if(a.anexar&&ultimoArquivo){
+    prep=blobParaBase64(ultimoArquivo.blob).then(function(b64){
+      payload.anexos=[{nome:ultimoArquivo.nome,mime:ultimoArquivo.mime,base64:b64}];
+    });
+  }
+  prep.then(function(){
+    return fetch(cfg.email,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(payload),redirect:'follow'});
+  }).then(function(r){ return r.text(); })
+  .then(function(t){
+    log('email: '+t.slice(0,120));
+    if(/ok/i.test(t)){ bubble('ai','✉️ E-mail enviado'+(payload.anexos?' com anexo: '+payload.anexos[0].nome:'')+'.'); say('E-mail enviado.'); }
+    else { bubble('err','O servidor de e-mail respondeu: '+t.slice(0,200)); say('O e-mail não foi.'); }
+  })
+  .catch(function(e){ log('✖ email: '+e.message); bubble('err','Falha no envio: '+e.message); say('Falha no envio do e-mail.'); });
+}
+function enviarWhatsApp(a){
+  var texto=encodeURIComponent(a.corpo||a.texto||'');
+  var num=(a.para||'').replace(/\D/g,'');
+  var url='https://wa.me/'+(num?num:'')+'?text='+texto;
+  bubble('sys','💬 abrindo o WhatsApp…');
+  var w=window.open(url,'_blank');
+  if(!w) bubble('err','Pop-up bloqueado. Libere pop-ups para abrir o WhatsApp.');
+  else say('Abri o WhatsApp com a mensagem pronta. É só tocar em enviar.');
+}
+
 /* ═════ CONVERSA ═════ */
 /* ─── ANEXOS ─── */
 var anexos=[];                 // {name,size,kind,media,data,preview}
@@ -664,7 +714,10 @@ function SYSTEM(){
   (memoria?'MEMÓRIA PERSISTENTE (o que você já sabe de sessões anteriores — trate como fato):\n'+memoria+'\n\n':'')+
   'Grafo atual (id|label|cluster):\n'+graphSummary()+'\n\n'+
   'Clusters válidos: vale, calango, dev, tri, gmail, novo.\n'+
-  'Ação disponível: "limpar_gmail". Use só se ele pedir claramente.\n\n'+
+  'AÇÕES DISPONÍVEIS no campo "action" (use só quando ele pedir claramente):\n'+
+  '- "limpar_gmail" (string simples)\n'+
+  '- {"tipo":"email","assunto":"…","corpo":"texto completo do e-mail","para":null,"anexar":true} — para=null envia para o próprio Fábio; anexar=true junta o último arquivo gerado. Se ele pedir documento + e-mail, preencha "file" E "action" na mesma resposta.\n'+
+  '- {"tipo":"whatsapp","corpo":"mensagem pronta","para":null} — abre o WhatsApp com o texto pronto para ele tocar em enviar; para=null deixa ele escolher o contato.\n\n'+
   'ANEXOS: quando vierem imagens, PDFs ou arquivos de texto, analise o conteúdo e responda sobre ele. '+
   'Se o material for relevante para um projeto do Fábio, crie um nó novo com o resumo no campo detail. '+
   'Documentos técnicos (P&ID, relatórios, planilhas) vão no cluster vale; texto do livro vai em calango; código vai em dev.\n\n'+
@@ -734,7 +787,9 @@ function carregarLib(nome){
     log('baixando lib '+nome);
   });
 }
+var ultimoArquivo=null; // {nome, blob, mime}
 function baixarBlob(blob,nome){
+  ultimoArquivo={nome:nome,blob:blob,mime:blob.type||'application/octet-stream'};
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
   a.href=url; a.download=nome; a.style.display='none';
@@ -748,7 +803,20 @@ function bolhaArquivo(nome,fn){
   var b=document.createElement('button'); b.className='fdl'; b.textContent='Baixar';
   b.addEventListener('click',fn);
   d.appendChild(t); d.appendChild(b);
+  if(navigator.canShare){
+    var s=document.createElement('button'); s.className='fdl'; s.style.background='#25D366'; s.textContent='Enviar';
+    s.addEventListener('click',function(){ compartilharUltimo(nome); });
+    d.appendChild(s);
+  }
   msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+}
+function compartilharUltimo(nome){
+  if(!ultimoArquivo||ultimoArquivo.nome!==nome){ bubble('err','Gere o arquivo de novo (Baixar) antes de enviar.'); return; }
+  var f=new File([ultimoArquivo.blob],ultimoArquivo.nome,{type:ultimoArquivo.mime});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){
+    navigator.share({files:[f],title:ultimoArquivo.nome}).then(function(){ log('compartilhado: '+nome); })
+      .catch(function(e){ if(e.name!=='AbortError') log('✖ share: '+e.message); });
+  } else bubble('err','Este navegador não compartilha arquivos. Use o Baixar e anexe pelo WhatsApp.');
 }
 function sanitizaNome(n,ext){
   n=String(n||'documento').replace(/[\/\\:*?"<>|]/g,'-').trim();
@@ -1047,6 +1115,15 @@ function sendMsg(text){
       if(changed){ rebuild(); bubble('sys','⚡ novas sinapses'); energy=1.6; }
       save(); done(); say(p.reply);
       if(p.action==='limpar_gmail') runGmailCleanup();
+      else if(p.action&&typeof p.action==='object'){
+        var ag=function(){ 
+          if(p.action.tipo==='email') enviarEmail(p.action);
+          else if(p.action.tipo==='whatsapp') enviarWhatsApp(p.action);
+        };
+        // se um arquivo está sendo gerado nesta mesma resposta, espera ficar pronto para poder anexar
+        if(p.file&&p.action.tipo==='email'&&p.action.anexar) setTimeout(ag,2500);
+        else ag();
+      }
     })
     .catch(function(e){
       log('✖ cérebro: '+e.message);
@@ -1145,7 +1222,8 @@ window.addEventListener('DOMContentLoaded',function(){
   $('swAuto').addEventListener('click',function(){cfg.auto=!cfg.auto;setSw('swAuto',cfg.auto);save();});
   $('swLabels').addEventListener('click',function(){cfg.labels=!cfg.labels;setSw('swLabels',cfg.labels);save();});
   $('btnSaveCfg').addEventListener('click',function(){
-    cfg.friday=$('cfgFriday').value.trim(); cfg.gmail=$('cfgGmail').value.trim(); save();
+    cfg.friday=$('cfgFriday').value.trim(); cfg.gmail=$('cfgGmail').value.trim();
+    cfg.email=$('cfgEmail').value.trim(); cfg.chave=$('cfgChave').value.trim(); save();
     log('config salva'); closeP('settings'); say('Configuração salva.');
   });
   $('btnTestMic').addEventListener('click',function(){
