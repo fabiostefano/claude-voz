@@ -962,10 +962,24 @@ function gerarArquivo(spec){
 
 function extractReply(raw){
   var s=String(raw).replace(/```json/gi,'').replace(/```/g,'').trim();
-  try{ var o=JSON.parse(s); if(typeof o.reply==='string') return o; }catch(e){}
-  var i=s.indexOf('{'),j=s.lastIndexOf('}');
-  if(i>-1&&j>i){ try{ var o2=JSON.parse(s.slice(i,j+1)); if(typeof o2.reply==='string') return o2; }catch(e){} }
-  return {reply:s||'Não entendi. Repete?',action:null,newNodes:[],newEdges:[]};
+  var tenta=function(str){
+    try{ var o=JSON.parse(str); if(o&&typeof o==='object') return o; }catch(e){}
+    var i=str.indexOf('{'),j=str.lastIndexOf('}');
+    if(i>-1&&j>i){ try{ var o2=JSON.parse(str.slice(i,j+1)); if(o2&&typeof o2==='object') return o2; }catch(e){} }
+    return null;
+  };
+  var o=tenta(s);
+  // o servidor antigo envelopa: {"reply":"<nosso JSON como texto>"} — desembrulha até 3 camadas
+  for(var k=0;k<3&&o&&typeof o.reply==='string';k++){
+    var interno=tenta(o.reply);
+    if(interno&&(typeof interno.reply==='string'||interno.file||interno.newNodes)){
+      // preserva campos que só existam na camada de fora
+      if(!interno.file&&o.file) interno.file=o.file;
+      o=interno;
+    } else break;
+  }
+  if(o&&typeof o.reply==='string') return o;
+  return {reply:s||'Não entendi. Repete?',action:null,file:null,newNodes:[],newEdges:[]};
 }
 function sendMsg(text){
   text=String(text||'').trim();
@@ -991,6 +1005,17 @@ function sendMsg(text){
     anexos=[]; renderAnexos();
   }
 
+  // MODO COMPATIBILIDADE: o servidor antigo ignora o campo "system".
+  // Então as instruções vão dentro da própria mensagem do usuário — isso ele repassa.
+  var ultima=list[list.length-1];
+  var instrucoes='[INSTRUÇÕES DO SISTEMA — siga estritamente]\n'+SYSTEM()+'\n[FIM DAS INSTRUÇÕES]\n\nMensagem do Fábio: ';
+  if(typeof ultima.content==='string'){
+    ultima.content=instrucoes+ultima.content;
+  } else if(Array.isArray(ultima.content)){
+    for(var bi=ultima.content.length-1;bi>=0;bi--){
+      if(ultima.content[bi].type==='text'){ ultima.content[bi].text=instrucoes+ultima.content[bi].text; break; }
+    }
+  }
   callBrain({model:'claude-sonnet-4-6',max_tokens:16000,system:SYSTEM(),messages:list})
     .then(function(data){
       var raw=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
