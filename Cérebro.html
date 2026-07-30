@@ -629,6 +629,129 @@ function lerEmails(a){
   })
   .catch(function(e){ log('✖ ler emails: '+e.message); bubble('err','Falha na leitura: '+e.message); });
 }
+
+/* ═════ LOCALIZAÇÃO (OpenStreetMap — sem chave, sem faturação) ═════ */
+var minhaPos = null;   // {lat, lon, precisao, quando}
+
+function pegarLocalizacao(forcar){
+  return new Promise(function(res, rej){
+    var fresca = minhaPos && !forcar && (Date.now() - minhaPos.quando < 5*60*1000);
+    if (fresca) { res(minhaPos); return; }
+    if (!navigator.geolocation) { rej(new Error('este navegador não tem geolocalização')); return; }
+    log('pedindo localização…');
+    navigator.geolocation.getCurrentPosition(
+      function(p){
+        minhaPos = { lat: p.coords.latitude, lon: p.coords.longitude,
+                     precisao: Math.round(p.coords.accuracy), quando: Date.now() };
+        log('localização OK (±' + minhaPos.precisao + 'm)');
+        res(minhaPos);
+      },
+      function(e){ log('✖ localização: ' + e.message); rej(new Error('permissão de localização negada ou indisponível')); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 5*60*1000 }
+    );
+  });
+}
+
+function nominatimBusca(query, viewbox){
+  var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(query);
+  if (viewbox) url += '&viewbox=' + viewbox + '&bounded=1';
+  return fetch(url, { headers: { 'Accept-Language': 'pt-BR' } })
+    .then(function(r){ return r.json(); })
+    .then(function(arr){
+      if (!arr.length) throw new Error('não encontrei "' + query + '" no mapa');
+      return { lat: parseFloat(arr[0].lat), lon: parseFloat(arr[0].lon), nome: arr[0].display_name };
+    });
+}
+
+function nominatimReverso(lat, lon){
+  var url = 'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lon + '&zoom=16';
+  return fetch(url, { headers: { 'Accept-Language': 'pt-BR' } })
+    .then(function(r){ return r.json(); })
+    .then(function(j){ return j.display_name || (lat + ', ' + lon); });
+}
+
+function osrmDistancia(origem, destino){
+  var url = 'https://router.project-osrm.org/route/v1/driving/' +
+    origem.lon + ',' + origem.lat + ';' + destino.lon + ',' + destino.lat +
+    '?overview=false';
+  return fetch(url).then(function(r){ return r.json(); }).then(function(j){
+    if (!j.routes || !j.routes.length) throw new Error('não consegui traçar a rota');
+    var r0 = j.routes[0];
+    return { km: (r0.distance/1000).toFixed(1), min: Math.round(r0.duration/60) };
+  });
+}
+
+var CATEGORIAS_OSM = {
+  'posto': 'amenity=fuel', 'posto de gasolina': 'amenity=fuel', 'gasolina': 'amenity=fuel',
+  'restaurante': 'amenity=restaurant', 'lanchonete': 'amenity=fast_food',
+  'hotel': 'tourism=hotel', 'pousada': 'tourism=guest_house',
+  'farmacia': 'amenity=pharmacy', 'farmácia': 'amenity=pharmacy',
+  'banco': 'amenity=bank', 'caixa eletronico': 'amenity=atm', 'caixa eletrônico': 'amenity=atm',
+  'hospital': 'amenity=hospital', 'padaria': 'shop=bakery', 'supermercado': 'shop=supermarket',
+  'academia': 'leisure=fitness_centre', 'oficina': 'shop=car_repair'
+};
+function overpassPerto(categoria, lat, lon, raio){
+  var tag = CATEGORIAS_OSM[String(categoria||'').toLowerCase().trim()] || 'amenity=restaurant';
+  var q = '[out:json][timeout:15];nwr[' + tag.replace('=', '="') + '"](around:' +
+    (raio||3000) + ',' + lat + ',' + lon + ');out center 8;';
+  return fetch('https://overpass-api.de/api/interpreter', {
+    method: 'POST', body: 'data=' + encodeURIComponent(q)
+  }).then(function(r){ return r.json(); }).then(function(j){
+    return (j.elements||[]).map(function(el){
+      var la = el.lat || (el.center && el.center.lat), lo = el.lon || (el.center && el.center.lon);
+      var d = distanciaReta(lat, lon, la, lo);
+      return { nome: (el.tags && (el.tags.name || el.tags['addr:street'])) || 'sem nome', distKm: d };
+    }).filter(function(x){ return x.nome !== 'sem nome'; })
+      .sort(function(a,b){ return a.distKm - b.distKm; }).slice(0, 5);
+  });
+}
+function distanciaReta(lat1, lon1, lat2, lon2){
+  var R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+  var a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))).toFixed(1);
+}
+
+function ondeEstou(){
+  bubble('sys','📍 localizando…');
+  pegarLocalizacao().then(function(pos){
+    return nominatimReverso(pos.lat, pos.lon);
+  }).then(function(endereco){
+    bubble('ai','📍 ' + endereco);
+    say('Você está em ' + endereco.split(',').slice(0,2).join(','));
+    sendMsg('[DADOS INTERNOS — não crie ação nem nó, apenas confirme em 1 frase]: localização atual: ' + endereco);
+  }).catch(function(e){
+    bubble('err', e.message); say('Não consegui pegar sua localização.');
+  });
+}
+
+function distanciaAte(destinoNome){
+  bubble('sys','📍 calculando distância até "' + destinoNome + '"…');
+  pegarLocalizacao().then(function(pos){
+    return nominatimBusca(destinoNome).then(function(destino){
+      return osrmDistancia(pos, destino).then(function(rota){
+        var texto = destino.nome.split(',').slice(0,3).join(',') + ': ' + rota.km + ' km, cerca de ' + rota.min + ' min de carro.';
+        bubble('ai','🚗 ' + texto); say(texto);
+      });
+    });
+  }).catch(function(e){
+    bubble('err', e.message); say('Não consegui calcular essa distância.');
+  });
+}
+
+function lugaresPerto(categoria, raio){
+  bubble('sys','📍 buscando ' + (categoria||'lugares') + ' perto de você…');
+  pegarLocalizacao().then(function(pos){
+    return overpassPerto(categoria, pos.lat, pos.lon, raio).then(function(lista){
+      if (!lista.length){ bubble('ai','Não achei ' + categoria + ' num raio de ' + ((raio||3000)/1000) + ' km.'); say('Não achei nada perto.'); return; }
+      var texto = lista.map(function(l,i){ return (i+1) + '. ' + l.nome + ' — ' + l.distKm + ' km'; }).join('\n');
+      bubble('ai','📍 ' + categoria + ' mais próximos:\n' + texto);
+      say('Achei ' + lista.length + ' opções. A mais perto é ' + lista[0].nome + ', a ' + lista[0].distKm + ' quilômetros.');
+    });
+  }).catch(function(e){
+    bubble('err', e.message); say('Não consegui buscar isso perto de você.');
+  });
+}
+
 function enviarWhatsApp(a){
   var texto=encodeURIComponent(a.corpo||a.texto||'');
   var num=(a.para||'').replace(/\D/g,'');
@@ -754,7 +877,10 @@ function SYSTEM(){
   '- "limpar_gmail" (string simples)\n'+
   '- {"tipo":"email","assunto":"…","corpo":"texto completo do e-mail","para":null,"anexar":true} — para=null envia para o próprio Fábio; anexar=true junta o último arquivo gerado. Se ele pedir documento + e-mail, preencha "file" E "action" na mesma resposta.\n'+
   '- {"tipo":"ler_emails","quantos":5,"filtro":""} — lê os e-mails recentes da caixa dele (filtro opcional no padrão de busca do Gmail, ex.: "is:unread", "from:vale.com"). Use quando ele pedir para ler, verificar ou resumir a caixa de entrada.\n'+
-  '- {"tipo":"whatsapp","corpo":"mensagem pronta","para":null} — abre o WhatsApp com o texto pronto para ele tocar em enviar; para=null deixa ele escolher o contato.\n\n'+
+  '- {"tipo":"whatsapp","corpo":"mensagem pronta","para":null} — abre o WhatsApp com o texto pronto para ele tocar em enviar; para=null deixa ele escolher o contato.\n'+
+  '- {"tipo":"onde_estou"} — descobre e informa onde ele está agora (usa GPS do celular).\n'+
+  '- {"tipo":"distancia","destino":"nome ou endereço do lugar"} — calcula distância e tempo de carro até um lugar nomeado (posto, hotel, endereço, cidade).\n'+
+  '- {"tipo":"lugares_perto","categoria":"restaurante|posto|hotel|farmacia|banco|hospital|padaria|supermercado|academia|oficina","raio":3000} — lista os mais próximos dessa categoria, ordenados por distância.\n\n'+
   'ANEXOS: quando vierem imagens, PDFs ou arquivos de texto, analise o conteúdo e responda sobre ele. '+
   'Se o material for relevante para um projeto do Fábio, crie um nó novo com o resumo no campo detail. '+
   'Documentos técnicos (P&ID, relatórios, planilhas) vão no cluster vale; texto do livro vai em calango; código vai em dev.\n\n'+
@@ -1156,6 +1282,9 @@ function sendMsg(text){
         var ag=function(){ 
           if(p.action.tipo==='email') enviarEmail(p.action);
           else if(p.action.tipo==='whatsapp') enviarWhatsApp(p.action);
+          else if(p.action.tipo==='onde_estou') ondeEstou();
+          else if(p.action.tipo==='distancia') distanciaAte(p.action.destino);
+          else if(p.action.tipo==='lugares_perto') lugaresPerto(p.action.categoria, p.action.raio);
           else if(p.action.tipo==='ler_emails') lerEmails(p.action);
         };
         // se um arquivo está sendo gerado nesta mesma resposta, espera ficar pronto para poder anexar
