@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>FRIDAY · Cérebro Vivo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icone-192.png">
+<meta name="theme-color" content="#06080E">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{width:100%;height:100%;overflow:hidden;background:#06080E;
@@ -422,7 +425,9 @@ function draw(now){
       var age=Math.min((now-n.born)/700,1), scale=.4+.6*(1-Math.pow(1-age,3));
       var fire=(Math.sin(now*.0015+n.ph)*.5+.5);
       var R=(n.r*(0.92+fire*0.12))*scale + (n.id==='core'?fire*2.5:0);
+      if(!isFinite(R)||R<0.5) R=0.5;
       var gR=R*(isSel?3.4:2.4+energy);
+      if(!isFinite(gR)||gR<=R) gR=R+1;
       var g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,gR);
       g.addColorStop(0,c.glow+(isSel?.6:.24+fire*.14+energy*.22).toFixed(3)+')');
       g.addColorStop(1,c.glow+'0)');
@@ -601,6 +606,29 @@ function enviarEmail(a){
   })
   .catch(function(e){ log('✖ email: '+e.message); bubble('err','Falha no envio: '+e.message); say('Falha no envio do e-mail.'); });
 }
+function lerEmails(a){
+  if(!cfg.email){ bubble('err','Configure a URL do friday-email na ⚙.'); openP('settings'); return; }
+  bubble('sys','📬 buscando e-mails…'); say('Lendo sua caixa de entrada.');
+  var payload={chave:cfg.chave||'',acao:'ler',quantos:Math.min((a&&a.quantos)||5,15),filtro:(a&&a.filtro)||''};
+  fetch(cfg.email,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(payload),redirect:'follow'})
+  .then(function(r){ return r.text(); })
+  .then(function(t){
+    log('ler emails: '+t.slice(0,100));
+    var j; try{ j=JSON.parse(t); }catch(e){ bubble('err','Resposta inesperada: '+t.slice(0,200)); return; }
+    if(j.erro){ bubble('err',j.erro); say('Não consegui ler.'); return; }
+    var lista=j.emails||[];
+    if(!lista.length){ bubble('ai','📭 Nada novo na caixa de entrada.'); say('Caixa de entrada limpa.'); return; }
+    var texto=lista.map(function(m,i){
+      return (i+1)+'. '+(m.naoLido?'● ':'')+m.de+' — '+m.assunto+'\n   '+m.resumo;
+    }).join('\n');
+    bubble('ai','📬 '+lista.length+' e-mail(s):\n\n'+texto);
+    // pede à FRIDAY um resumo falado, com os dados embutidos
+    var dados=lista.map(function(m){return m.de+': '+m.assunto+' ('+m.resumo+')';}).join(' | ');
+    sendMsg('[DADOS INTERNOS — resuma em até 3 frases faladas o que importa nestes e-mails, sem usar nenhuma ação nem criar nós]: '+dados);
+  })
+  .catch(function(e){ log('✖ ler emails: '+e.message); bubble('err','Falha na leitura: '+e.message); });
+}
 function enviarWhatsApp(a){
   var texto=encodeURIComponent(a.corpo||a.texto||'');
   var num=(a.para||'').replace(/\D/g,'');
@@ -717,6 +745,7 @@ function SYSTEM(){
   'AÇÕES DISPONÍVEIS no campo "action" (use só quando ele pedir claramente):\n'+
   '- "limpar_gmail" (string simples)\n'+
   '- {"tipo":"email","assunto":"…","corpo":"texto completo do e-mail","para":null,"anexar":true} — para=null envia para o próprio Fábio; anexar=true junta o último arquivo gerado. Se ele pedir documento + e-mail, preencha "file" E "action" na mesma resposta.\n'+
+  '- {"tipo":"ler_emails","quantos":5,"filtro":""} — lê os e-mails recentes da caixa dele (filtro opcional no padrão de busca do Gmail, ex.: "is:unread", "from:vale.com"). Use quando ele pedir para ler, verificar ou resumir a caixa de entrada.\n'+
   '- {"tipo":"whatsapp","corpo":"mensagem pronta","para":null} — abre o WhatsApp com o texto pronto para ele tocar em enviar; para=null deixa ele escolher o contato.\n\n'+
   'ANEXOS: quando vierem imagens, PDFs ou arquivos de texto, analise o conteúdo e responda sobre ele. '+
   'Se o material for relevante para um projeto do Fábio, crie um nó novo com o resumo no campo detail. '+
@@ -1119,6 +1148,7 @@ function sendMsg(text){
         var ag=function(){ 
           if(p.action.tipo==='email') enviarEmail(p.action);
           else if(p.action.tipo==='whatsapp') enviarWhatsApp(p.action);
+          else if(p.action.tipo==='ler_emails') lerEmails(p.action);
         };
         // se um arquivo está sendo gerado nesta mesma resposta, espera ficar pronto para poder anexar
         if(p.file&&p.action.tipo==='email'&&p.action.anexar) setTimeout(ag,2500);
