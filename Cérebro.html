@@ -183,6 +183,11 @@
       <label>Chave do friday-email</label>
       <input id="cfgChave" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="senha definida no script">
     </div>
+    <div class="fld">
+      <label>URL do friday-calendar</label>
+      <input id="cfgCalendar" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+      <small>Script separado para criar e listar compromissos no Google Calendar. Usa a mesma chave do friday-email acima.</small>
+    </div>
     <div class="toggleRow"><span>Falar as respostas</span><button class="sw on" id="swSpeak"></button></div>
     <div class="toggleRow"><span>Escuta contínua</span><button class="sw" id="swCont"></button></div>
     <div class="toggleRow"><span>Criar nós automaticamente</span><button class="sw on" id="swAuto"></button></div>
@@ -211,7 +216,7 @@ window.onerror=function(m,s,l){ log('✖ '+m+' @'+l); return false; };
 window.addEventListener('unhandledrejection',function(e){ log('✖ promise: '+(e.reason&&e.reason.message||e.reason)); });
 
 /* ═════ ESTADO ═════ */
-var cfg={friday:'',gmail:'',email:'',chave:'',speak:true,cont:false,auto:true,labels:false};
+var cfg={friday:'',gmail:'',email:'',chave:'',calendar:'',speak:true,cont:false,auto:true,labels:false};
 var graph=null,chatHistory=[],memoria='',busy=false,listening=false,speaking=false,pending=false,micGranted=false;
 var focusNode=null;
 
@@ -263,7 +268,7 @@ function loadState(){
   try{ chatHistory=JSON.parse(stGet('fr-chat')||'[]')||[]; }catch(e){ chatHistory=[]; }
   memoria=stGet('fr-memoria')||'';
   $('cfgFriday').value=cfg.friday||''; $('cfgGmail').value=cfg.gmail||'';
-  $('cfgEmail').value=cfg.email||''; $('cfgChave').value=cfg.chave||'';
+  $('cfgEmail').value=cfg.email||''; $('cfgChave').value=cfg.chave||''; $('cfgCalendar').value=cfg.calendar||'';
   setSw('swSpeak',cfg.speak); setSw('swCont',cfg.cont); setSw('swAuto',cfg.auto); setSw('swLabels',cfg.labels);
 }
 function save(){
@@ -452,17 +457,30 @@ function ptOf(e){ var r=canvas.getBoundingClientRect(); return {x:e.clientX-r.le
 
 /* ═════ VOZ ═════ */
 var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-var rec=null,ptVoice=null,restartTimer=null,watchdog=null;
+var rec=null,restartTimer=null,watchdog=null;
+var idiomaAtual='pt-BR';           // idioma corrente de fala e escuta — muda sozinho ao detectar o idioma da conversa
+var vozesCache=[];
 function loadVoices(){
   if(!window.speechSynthesis) return;
-  var f=speechSynthesis.getVoices().filter(function(v){return /^pt/i.test(v.lang);})[0];
-  if(f&&f!==ptVoice){ ptVoice=f; log('voz pt: '+f.name); }
+  vozesCache=speechSynthesis.getVoices();
+}
+function escolherVoz(idioma){
+  var pref=String(idioma||'pt-BR').slice(0,2).toLowerCase();
+  var exata=vozesCache.filter(function(v){return v.lang.toLowerCase()===String(idioma).toLowerCase();})[0];
+  if(exata) return exata;
+  return vozesCache.filter(function(v){return v.lang.toLowerCase().slice(0,2)===pref;})[0]||null;
+}
+function mudarIdioma(novo){
+  if(!novo||novo===idiomaAtual) return;
+  idiomaAtual=novo;
+  log('idioma → '+novo);
+  rec=null;   // força recriar o reconhecimento com o idioma novo na próxima escuta
 }
 function initRec(){
   if(!SR){ log('✖ sem SpeechRecognition'); return null; }
   var r=new SR();
-  r.lang='pt-BR'; r.continuous=false; r.interimResults=true; r.maxAlternatives=1;
-  r.onstart=function(){ pending=false; clearTimeout(watchdog); listening=true; orb.classList.add('listening'); showCap('Ouvindo…'); log('mic ON'); };
+  r.lang=idiomaAtual; r.continuous=false; r.interimResults=true; r.maxAlternatives=1;
+  r.onstart=function(){ pending=false; clearTimeout(watchdog); listening=true; orb.classList.add('listening'); showCap('Ouvindo…'); log('mic ON ('+idiomaAtual+')'); };
   r.onresult=function(e){
     var it='',fin='';
     for(var i=e.resultIndex;i<e.results.length;i++){
@@ -521,12 +539,14 @@ function stopRec(){
 function toggleVoice(){ (listening||pending)?stopRec():startRec(); }
 function esc(s){ return String(s).replace(/[<>&]/g,function(m){return{'<':'&lt;','>':'&gt;','&':'&amp;'}[m];}); }
 function showCap(h){ cap.innerHTML=h; cap.style.opacity=1; clearTimeout(cap._t); cap._t=setTimeout(function(){cap.style.opacity=0;},8000); }
-function say(t){
+function say(t,idioma){
   showCap(esc(t));
+  if(idioma) mudarIdioma(idioma);
   if(!cfg.speak||!window.speechSynthesis){ if(cfg.cont) startRec(); return; }
   stopRec(); speechSynthesis.cancel();
   var u=new SpeechSynthesisUtterance(String(t).replace(/[*#`_~]/g,''));
-  u.lang='pt-BR'; u.rate=1.05; if(ptVoice) u.voice=ptVoice;
+  u.lang=idiomaAtual; u.rate=1.05;
+  var v=escolherVoz(idiomaAtual); if(v) u.voice=v;
   speaking=true; orb.classList.add('speaking');
   var done=function(){ if(!speaking)return; speaking=false; orb.classList.remove('speaking');
     if(cfg.cont) restartTimer=setTimeout(startRec,350); };
@@ -752,6 +772,68 @@ function lugaresPerto(categoria, raio){
   });
 }
 
+/* ═════ ALARME E TIMER (intent nativo do Android — sem servidor) ═════ */
+function criarAlarme(a){
+  var hora=parseInt(a.hora,10), minuto=parseInt(a.minuto||0,10);
+  if(isNaN(hora)){ bubble('err','Preciso da hora do alarme.'); return; }
+  var msg=a.mensagem?('&S.android.intent.extra.alarm.MESSAGE='+encodeURIComponent(a.mensagem)):'';
+  var uri='intent:#Intent;action=android.intent.action.SET_ALARM;'+
+    'i.android.intent.extra.alarm.HOUR='+hora+';i.android.intent.extra.alarm.MINUTES='+minuto+
+    ';b.android.intent.extra.alarm.SKIP_UI=true'+msg.replace('&',';')+';end';
+  bubble('sys','⏰ abrindo o relógio para criar o alarme…');
+  log('alarme: '+hora+':'+minuto);
+  try{ window.location.href=uri; say('Alarme configurado para '+hora+' e '+minuto+'.'); }
+  catch(e){ bubble('err','Não consegui abrir o app de relógio.'); }
+}
+function criarTimer(a){
+  var seg=parseInt(a.segundos,10);
+  if(isNaN(seg)||seg<=0){ bubble('err','Preciso da duração do timer em segundos.'); return; }
+  var msg=a.mensagem?(';S.android.intent.extra.alarm.MESSAGE='+encodeURIComponent(a.mensagem)):'';
+  var uri='intent:#Intent;action=android.intent.action.SET_TIMER;'+
+    'i.android.intent.extra.alarm.LENGTH='+seg+
+    ';b.android.intent.extra.alarm.SKIP_UI=true'+msg+';end';
+  bubble('sys','⏱ iniciando o timer…');
+  log('timer: '+seg+'s');
+  try{ window.location.href=uri; say('Timer de '+Math.round(seg/60)+' minutos iniciado.'); }
+  catch(e){ bubble('err','Não consegui abrir o app de relógio.'); }
+}
+
+/* ═════ CALENDÁRIO (via friday-calendar, Apps Script) ═════ */
+function criarCompromisso(a){
+  if(!cfg.calendar){ bubble('err','Configure a URL do friday-calendar na ⚙.'); openP('settings'); return; }
+  bubble('sys','📅 criando compromisso…');
+  var payload={chave:cfg.chave||'',acao:'criar',titulo:a.titulo||'Compromisso',data:a.data,hora:a.hora,
+    duracaoMin:a.duracaoMin||60,local:a.local||'',descricao:a.descricao||''};
+  fetch(cfg.calendar,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(payload),redirect:'follow'})
+  .then(function(r){ return r.text(); })
+  .then(function(t){
+    log('calendario: '+t.slice(0,120));
+    if(/ok/i.test(t)){ bubble('ai','📅 '+t.replace(/^ok:\s*/i,'')); say('Compromisso criado.'); }
+    else { bubble('err','O calendário respondeu: '+t.slice(0,200)); say('Não consegui criar o compromisso.'); }
+  })
+  .catch(function(e){ log('✖ calendario: '+e.message); bubble('err','Falha: '+e.message); });
+}
+function listarCompromissos(a){
+  if(!cfg.calendar){ bubble('err','Configure a URL do friday-calendar na ⚙.'); openP('settings'); return; }
+  bubble('sys','📅 buscando compromissos…');
+  var payload={chave:cfg.chave||'',acao:'listar',periodo:a.periodo||'hoje'};
+  fetch(cfg.calendar,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(payload),redirect:'follow'})
+  .then(function(r){ return r.text(); })
+  .then(function(t){
+    log('calendario: '+t.slice(0,120));
+    var j; try{ j=JSON.parse(t); }catch(e){ bubble('err','Resposta inesperada: '+t.slice(0,200)); return; }
+    if(j.erro){ bubble('err',j.erro); return; }
+    var lista=j.eventos||[];
+    if(!lista.length){ bubble('ai','📅 Nada na agenda para '+(a.periodo||'hoje')+'.'); say('Agenda livre.'); return; }
+    var texto=lista.map(function(ev){ return '• '+ev.inicio+' — '+ev.titulo+(ev.local?' ('+ev.local+')':''); }).join('\n');
+    bubble('ai','📅 Compromissos:\n'+texto);
+    say(lista.length+' compromisso(s). O próximo é '+lista[0].titulo+' às '+lista[0].inicio+'.');
+  })
+  .catch(function(e){ log('✖ calendario: '+e.message); bubble('err','Falha: '+e.message); });
+}
+
 function enviarWhatsApp(a){
   var texto=encodeURIComponent(a.corpo||a.texto||'');
   var num=(a.para||'').replace(/\D/g,'');
@@ -880,7 +962,11 @@ function SYSTEM(){
   '- {"tipo":"whatsapp","corpo":"mensagem pronta","para":null} — abre o WhatsApp com o texto pronto para ele tocar em enviar; para=null deixa ele escolher o contato.\n'+
   '- {"tipo":"onde_estou"} — descobre e informa onde ele está agora (usa GPS do celular).\n'+
   '- {"tipo":"distancia","destino":"nome ou endereço do lugar"} — calcula distância e tempo de carro até um lugar nomeado (posto, hotel, endereço, cidade).\n'+
-  '- {"tipo":"lugares_perto","categoria":"restaurante|posto|hotel|farmacia|banco|hospital|padaria|supermercado|academia|oficina","raio":3000} — lista os mais próximos dessa categoria, ordenados por distância.\n\n'+
+  '- {"tipo":"lugares_perto","categoria":"restaurante|posto|hotel|farmacia|banco|hospital|padaria|supermercado|academia|oficina","raio":3000} — lista os mais próximos dessa categoria, ordenados por distância.\n'+
+  '- {"tipo":"criar_alarme","hora":7,"minuto":30,"mensagem":"opcional"} — abre o relógio do Android já configurado nesse horário (formato 24h).\n'+
+  '- {"tipo":"criar_timer","segundos":300,"mensagem":"opcional"} — inicia um timer/cronômetro regressivo nativo do Android.\n'+
+  '- {"tipo":"criar_compromisso","titulo":"...","data":"AAAA-MM-DD","hora":"HH:MM","duracaoMin":60,"local":"opcional","descricao":"opcional"} — cria um evento no Google Calendar dele. Use a DATA E HORA ATUAIS informadas acima para resolver "amanhã", "sexta que vem" etc.\n'+
+  '- {"tipo":"listar_compromissos","periodo":"hoje|amanha|semana"} — lista os compromissos da agenda no período.\n\n'+
   'ANEXOS: quando vierem imagens, PDFs ou arquivos de texto, analise o conteúdo e responda sobre ele. '+
   'Se o material for relevante para um projeto do Fábio, crie um nó novo com o resumo no campo detail. '+
   'Documentos técnicos (P&ID, relatórios, planilhas) vão no cluster vale; texto do livro vai em calango; código vai em dev.\n\n'+
@@ -902,8 +988,10 @@ function SYSTEM(){
   '(decisão, status de projeto, preferência, pendência resolvida), devolva a MEMÓRIA COMPLETA reescrita e atualizada nesse campo: '+
   'itens curtos, um por linha, máximo 1800 caracteres — resuma o antigo se precisar de espaço. Se nada mudou, "memoria":null. '+
   'Nunca apague pendências não resolvidas.\n\n'+
+  'IDIOMA: detecte o idioma em que o Fábio escreveu ou falou por último e responda SEMPRE nesse mesmo idioma, mesmo que a conversa tenha mudado de português para outro idioma no meio do caminho. '+
+  'Preencha o campo "idioma" com a tag BCP-47 (ex.: "pt-BR", "en-US", "es-ES"). Se não houver sinal de mudança, mantenha "pt-BR".\n\n'+
   'Responda APENAS com JSON válido, sem markdown:\n'+
-  '{"reply":"resposta falada","action":null,"file":null,"memoria":null,"newNodes":[{"id":"slug","label":"Nome","cluster":"dev","detail":"1-2 frases","connectTo":["id-existente"]}],"newEdges":[]}\n\n'+
+  '{"reply":"resposta falada","idioma":"pt-BR","action":null,"file":null,"memoria":null,"newNodes":[{"id":"slug","label":"Nome","cluster":"dev","detail":"1-2 frases","connectTo":["id-existente"]}],"newEdges":[]}\n\n'+
   'Só crie newNodes para temas realmente novos. Ids não podem repetir os existentes.';
 }
 function safeMessages(){
@@ -1276,7 +1364,7 @@ function sendMsg(text){
         });
       }
       if(changed){ rebuild(); bubble('sys','⚡ novas sinapses'); energy=1.6; }
-      save(); done(); say(p.reply);
+      save(); done(); say(p.reply, p.idioma);
       if(p.action==='limpar_gmail') runGmailCleanup();
       else if(p.action&&typeof p.action==='object'){
         var ag=function(){ 
@@ -1285,6 +1373,10 @@ function sendMsg(text){
           else if(p.action.tipo==='onde_estou') ondeEstou();
           else if(p.action.tipo==='distancia') distanciaAte(p.action.destino);
           else if(p.action.tipo==='lugares_perto') lugaresPerto(p.action.categoria, p.action.raio);
+          else if(p.action.tipo==='criar_alarme') criarAlarme(p.action);
+          else if(p.action.tipo==='criar_timer') criarTimer(p.action);
+          else if(p.action.tipo==='criar_compromisso') criarCompromisso(p.action);
+          else if(p.action.tipo==='listar_compromissos') listarCompromissos(p.action);
           else if(p.action.tipo==='ler_emails') lerEmails(p.action);
         };
         // se um arquivo está sendo gerado nesta mesma resposta, espera ficar pronto para poder anexar
@@ -1390,7 +1482,8 @@ window.addEventListener('DOMContentLoaded',function(){
   $('swLabels').addEventListener('click',function(){cfg.labels=!cfg.labels;setSw('swLabels',cfg.labels);save();});
   $('btnSaveCfg').addEventListener('click',function(){
     cfg.friday=$('cfgFriday').value.trim(); cfg.gmail=$('cfgGmail').value.trim();
-    cfg.email=$('cfgEmail').value.trim(); cfg.chave=$('cfgChave').value.trim(); save();
+    cfg.email=$('cfgEmail').value.trim(); cfg.chave=$('cfgChave').value.trim();
+    cfg.calendar=$('cfgCalendar').value.trim(); save();
     log('config salva'); closeP('settings'); say('Configuração salva.');
   });
   $('btnTestMic').addEventListener('click',function(){
