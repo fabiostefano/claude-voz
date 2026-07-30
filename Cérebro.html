@@ -731,6 +731,13 @@ function handleVoice(t){
   sendMsg(t);
 }
 function graphSummary(){ return graph.nodes.map(function(n){return n.id+'|'+n.label+'|'+n.cluster;}).join('\n'); }
+function agoraFormatado(){
+  var d=new Date();
+  var dias=['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  var dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yyyy=d.getFullYear();
+  var hh=String(d.getHours()).padStart(2,'0'), mi=String(d.getMinutes()).padStart(2,'0');
+  return dias[d.getDay()]+', '+dd+'/'+mm+'/'+yyyy+' às '+hh+':'+mi;
+}
 function SYSTEM(){
   var foco='';
   if(focusNode){
@@ -738,6 +745,7 @@ function SYSTEM(){
       (focusNode.detail||'sem detalhe')+'\nResponda sobre esse assunto especificamente, a menos que ele mude de tema.\n';
   }
   return 'Você é FRIDAY, o cérebro do Fábio Sobral — engenheiro eletricista na Vale (Porto São Luís / EFC Carajás), autor de "Resistente como um Calango", triatleta Master, e dev que constrói apps direto do celular.\n\n'+
+  'DATA E HORA ATUAIS (vindas do celular dele, sempre confie nisso e nunca em outra data que você "lembre"): '+agoraFormatado()+'.\n\n'+
   'Fábio tem TDAH: ação concreta primeiro, uma coisa de cada vez, direto, sem bajulação. Português brasileiro. As respostas serão FALADAS: frases curtas, sem markdown, no máximo 3 frases.\n'+foco+'\n'+
   (memoria?'MEMÓRIA PERSISTENTE (o que você já sabe de sessões anteriores — trate como fato):\n'+memoria+'\n\n':'')+
   'Grafo atual (id|label|cluster):\n'+graphSummary()+'\n\n'+
