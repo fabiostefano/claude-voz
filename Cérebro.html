@@ -1623,3 +1623,23 @@ window.addEventListener('DOMContentLoaded',function(){
 </script>
 </body>
 </html>
+/* ===== ACESSIBILIDADE: fonte e alvos de toque ===== */
+html { font-size: 18px !important; }
+
+.msg, .mensagem, .bubble, .chat-msg, p, span, div[class*="msg"] {
+  font-size: 1.05rem !important;
+  line-height: 1.5 !important;
+}
+
+button, .btn, [role="button"], .icone, .icon {
+  min-width: 52px !important;
+  min-height: 52px !important;
+  font-size: 1.2rem !important;
+}
+
+input, textarea, [contenteditable] {
+  font-size: 1.1rem !important;
+  padding: 14px !important;
+}
+
+svg { min-width: 28px; min-height: 28px; }
