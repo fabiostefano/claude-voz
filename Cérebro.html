@@ -184,6 +184,11 @@
       <input id="cfgChave" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="senha definida no script">
     </div>
     <div class="fld">
+      <label>URL do friday-backup</label>
+      <input id="cfgBackup" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+      <small>Salva uma cópia do cérebro no seu Google Drive automaticamente. Usa a mesma chave do friday-email.</small>
+    </div>
+    <div class="fld">
       <label>URL do friday-calendar</label>
       <input id="cfgCalendar" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
       <small>Script separado para criar e listar compromissos no Google Calendar. Usa a mesma chave do friday-email acima.</small>
@@ -193,6 +198,8 @@
     <div class="toggleRow"><span>Criar nós automaticamente</span><button class="sw on" id="swAuto"></button></div>
     <div class="toggleRow" style="border:none"><span>Mostrar todos os nomes</span><button class="sw" id="swLabels"></button></div>
     <button class="bigBtn" id="btnSaveCfg">Salvar configuração</button>
+    <button class="bigBtn ghost" id="btnBackupNow">☁ Fazer backup agora</button>
+    <button class="bigBtn ghost" id="btnRestore">☁ Restaurar último backup</button>
     <button class="bigBtn ghost" id="btnTestMic">Testar microfone</button>
     <button class="bigBtn ghost" id="btnTestFriday">Testar servidor FRIDAY</button>
     <button class="bigBtn ghost" id="btnTestGmail">Testar LimpezaGmail</button>
@@ -216,7 +223,7 @@ window.onerror=function(m,s,l){ log('✖ '+m+' @'+l); return false; };
 window.addEventListener('unhandledrejection',function(e){ log('✖ promise: '+(e.reason&&e.reason.message||e.reason)); });
 
 /* ═════ ESTADO ═════ */
-var cfg={friday:'',gmail:'',email:'',chave:'',calendar:'',speak:true,cont:false,auto:true,labels:false};
+var cfg={friday:'',gmail:'',email:'',chave:'',calendar:'',backup:'',speak:true,cont:false,auto:true,labels:false};
 var graph=null,chatHistory=[],memoria='',busy=false,listening=false,speaking=false,pending=false,micGranted=false;
 var focusNode=null;
 
@@ -268,7 +275,7 @@ function loadState(){
   try{ chatHistory=JSON.parse(stGet('fr-chat')||'[]')||[]; }catch(e){ chatHistory=[]; }
   memoria=stGet('fr-memoria')||'';
   $('cfgFriday').value=cfg.friday||''; $('cfgGmail').value=cfg.gmail||'';
-  $('cfgEmail').value=cfg.email||''; $('cfgChave').value=cfg.chave||''; $('cfgCalendar').value=cfg.calendar||'';
+  $('cfgEmail').value=cfg.email||''; $('cfgChave').value=cfg.chave||''; $('cfgCalendar').value=cfg.calendar||''; $('cfgBackup').value=cfg.backup||'';
   setSw('swSpeak',cfg.speak); setSw('swCont',cfg.cont); setSw('swAuto',cfg.auto); setSw('swLabels',cfg.labels);
 }
 function save(){
@@ -879,6 +886,47 @@ function enviarWhatsApp(a){
   var w=window.open(url,'_blank');
   if(!w) bubble('err','Pop-up bloqueado. Libere pop-ups para abrir o WhatsApp.');
   else say('Abri o WhatsApp com a mensagem pronta. É só tocar em enviar.');
+}
+
+
+/* ═════ BACKUP NO DRIVE (friday-backup) ═════ */
+var backupTimer=null, ultimoBackup=0;
+function agendarBackup(){
+  if(!cfg.backup) return;
+  clearTimeout(backupTimer);
+  backupTimer=setTimeout(fazerBackup, 90*1000);   // 90s de silêncio antes de gravar — evita gravar a cada tecla
+}
+function fazerBackup(silencioso){
+  if(!cfg.backup) return Promise.resolve(false);
+  var dados={graph:graph, chatHistory:chatHistory.slice(-40), memoria:memoria, quando:new Date().toISOString()};
+  return fetch(cfg.backup,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({chave:cfg.chave||'',acao:'salvar',dados:JSON.stringify(dados)}),redirect:'follow'})
+  .then(function(r){ return r.text(); })
+  .then(function(t){
+    log('backup: '+t.slice(0,100));
+    ultimoBackup=Date.now();
+    if(!silencioso) bubble('sys','☁ backup salvo no Drive');
+    return /^ok/i.test(t.trim());
+  })
+  .catch(function(e){ log('✖ backup: '+e.message); if(!silencioso) bubble('err','Falha no backup: '+e.message); return false; });
+}
+function restaurarBackup(){
+  if(!cfg.backup){ bubble('err','Configure a URL do friday-backup na ⚙.'); return; }
+  bubble('sys','☁ buscando o último backup…');
+  fetch(cfg.backup,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({chave:cfg.chave||'',acao:'carregar'}),redirect:'follow'})
+  .then(function(r){ return r.text(); })
+  .then(function(t){
+    if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); return; }
+    var j; try{ j=JSON.parse(t); }catch(e){ bubble('err','Resposta inesperada: '+t.slice(0,200)); return; }
+    if(!j.dados){ bubble('err','Nenhum backup encontrado no Drive ainda.'); return; }
+    var d=JSON.parse(j.dados);
+    graph=d.graph||graph; chatHistory=d.chatHistory||[]; memoria=d.memoria||'';
+    rebuild(); save(); renderMsgs(); closeP('settings');
+    bubble('sys','☁ restaurado — backup de '+new Date(d.quando).toLocaleString('pt-BR'));
+    showCap('Cérebro restaurado do backup.');
+  })
+  .catch(function(e){ log('✖ restaurar: '+e.message); bubble('err','Falha ao restaurar: '+e.message); });
 }
 
 /* ═════ CONVERSA ═════ */
@@ -1520,7 +1568,7 @@ window.addEventListener('DOMContentLoaded',function(){
   $('btnSaveCfg').addEventListener('click',function(){
     cfg.friday=$('cfgFriday').value.trim(); cfg.gmail=$('cfgGmail').value.trim();
     cfg.email=$('cfgEmail').value.trim(); cfg.chave=$('cfgChave').value.trim();
-    cfg.calendar=$('cfgCalendar').value.trim(); save();
+    cfg.calendar=$('cfgCalendar').value.trim(); cfg.backup=$('cfgBackup').value.trim(); save();
     log('config salva'); closeP('settings'); say('Configuração salva.');
   });
   $('btnTestMic').addEventListener('click',function(){
@@ -1547,11 +1595,27 @@ window.addEventListener('DOMContentLoaded',function(){
       .then(function(t){ log('resposta: '+t.slice(0,300)); })
       .catch(function(e){ log('✖ bloqueado: '+e.message+' → será usado o plano B (aba nova)'); });
   });
+  var resetArmado=false, resetTimer=null;
   $('btnReset').addEventListener('click',function(){
-    memoria='';
-    graph=JSON.parse(JSON.stringify(SEED)); chatHistory=[]; msgs.innerHTML=''; setFocus(null);
-    save(); rebuild(); closeP('settings'); showCap('Cérebro reiniciado.');
+    if(!resetArmado){
+      resetArmado=true;
+      $('btnReset').textContent='Toque de novo para confirmar (apaga tudo)';
+      clearTimeout(resetTimer);
+      resetTimer=setTimeout(function(){ resetArmado=false; $('btnReset').textContent='Zerar o cérebro'; },5000);
+      return;
+    }
+    resetArmado=false; clearTimeout(resetTimer);
+    $('btnReset').textContent='Zerar o cérebro';
+    var concluir=function(){
+      memoria='';
+      graph=JSON.parse(JSON.stringify(SEED)); chatHistory=[]; msgs.innerHTML=''; setFocus(null);
+      save(); rebuild(); closeP('settings'); showCap('Cérebro reiniciado. Backup de segurança salvo antes de apagar.');
+    };
+    if(cfg.backup){ bubble('sys','☁ salvando backup de segurança antes de zerar…'); fazerBackup(true).then(concluir); }
+    else concluir();
   });
+  $('btnRestore').addEventListener('click', restaurarBackup);
+  $('btnBackupNow').addEventListener('click', function(){ fazerBackup(false); });
   document.addEventListener('visibilitychange',function(){
     if(document.hidden){ stopRec(); if(window.speechSynthesis) speechSynthesis.cancel(); speaking=false; orb.classList.remove('speaking'); }
   });
