@@ -282,7 +282,7 @@ function upStatus(){ statusEl.textContent=graph.nodes.length+' nós · '+graph.e
 function setSw(id,v){ $(id).classList.toggle('on',!!v); }
 
 /* ═════ SILHUETA DO CÉREBRO ═════ */
-var BX=0,BY=0,BS=1,W,H,DPR;
+var BX=0,BY=0,BS=1,BSX=1,BSY=1,W,H,DPR;
 function brainPath(){
   // desenhado numa caixa de 100 x 80, perfil lateral voltado para a esquerda
   var p=new Path2D();
@@ -306,23 +306,70 @@ var SULCI=[
   [[24,32],[32,36],[26,44]],
   [[84,30],[80,40],[86,46]]
 ];
-function toScreen(x,y){ return { x:BX+x*BS, y:BY+y*BS }; }
+function toScreen(x,y){ return { x:BX+x*BSX, y:BY+y*BSY }; }
 function fitBrain(){
   var availW=W*0.94, availH=H-190;
-  BS=Math.min(availW/100, availH/80);
-  BX=(W-100*BS)/2; BY=88+(availH-80*BS)/2;
+  BSX = availW/100;
+  BSY = availH/80;
+  BX=(W-100*BSX)/2; BY=88+(availH-80*BSY)/2;
+  BS=(BSX+BSY)/2;   // média — usada só como escala aproximada para a física (repulsão, molas)
 }
 function inBrain(x,y){
   // testa em coordenadas normalizadas usando a matriz atual
-  ctx.save(); ctx.translate(BX,BY); ctx.scale(BS,BS);
+  ctx.save(); ctx.translate(BX,BY); ctx.scale(BSX,BSY);
   var ok=ctx.isPointInPath(BRAIN,x,y);
   ctx.restore(); return ok;
 }
+
+/* ═════ MALHA PLEXUS (estética do fundo — pontos e fios) ═════ */
+var mesh = { pts: [], links: [] };
+function inBrainNorm(nx, ny){
+  var p = toScreen(nx, ny);
+  return inBrain(p.x, p.y);
+}
+function gerarMesh(){
+  mesh.pts = []; mesh.links = [];
+  var rng = (function(seed){ return function(){ seed=(seed*9301+49297)%233280; return seed/233280; }; })(42);
+  var alvo = 230, tentativas = 0;
+  while (mesh.pts.length < alvo && tentativas < 4000){
+    tentativas++;
+    var nx = 8 + rng()*88, ny = 3 + rng()*76;
+    if (!inBrainNorm(nx, ny)) continue;
+    // espaçamento mínimo pra não amontoar
+    var perto = false;
+    for (var i=0;i<mesh.pts.length;i++){
+      var q = mesh.pts[i];
+      if ((q.nx-nx)*(q.nx-nx) + (q.ny-ny)*(q.ny-ny) < 8) { perto = true; break; }
+    }
+    if (perto) continue;
+    var r = rng();
+    var cor = r < 0.72 ? '#EFD662' : (r < 0.86 ? '#DDEFF5' : (r < 0.95 ? '#E8933C' : '#D95C4A'));
+    mesh.pts.push({ nx: nx, ny: ny, raio: 0.9 + rng()*1.3, cor: cor });
+  }
+  // liga cada ponto aos 3 vizinhos mais próximos dentro do raio
+  for (var a=0;a<mesh.pts.length;a++){
+    var dists = [];
+    for (var b=0;b<mesh.pts.length;b++){
+      if (a===b) continue;
+      var dx = mesh.pts[a].nx - mesh.pts[b].nx, dy = mesh.pts[a].ny - mesh.pts[b].ny;
+      var d2 = dx*dx + dy*dy;
+      if (d2 < 110) dists.push([d2, b]);
+    }
+    dists.sort(function(x,y){ return x[0]-y[0]; });
+    for (var k=0;k<Math.min(3, dists.length);k++){
+      var b2 = dists[k][1];
+      if (a < b2) mesh.links.push([a, b2]);
+    }
+  }
+  log('malha: ' + mesh.pts.length + ' pontos, ' + mesh.links.length + ' fios');
+}
+
 function resize(){
   DPR=Math.min(window.devicePixelRatio||1,2); W=window.innerWidth; H=window.innerHeight;
   canvas.width=W*DPR; canvas.height=H*DPR; canvas.style.width=W+'px'; canvas.style.height=H+'px';
   ctx.setTransform(DPR,0,0,DPR,0,0);
   fitBrain();
+  gerarMesh();
 }
 
 /* ═════ SIMULAÇÃO ═════ */
@@ -378,32 +425,21 @@ function draw(now){
     physics(); ctx.clearRect(0,0,W,H);
     var boost=1+energy*2.2;
 
-    ctx.save(); ctx.translate(BX,BY); ctx.scale(BS,BS);
-    // preenchimento suave do córtex
-    var gg=ctx.createLinearGradient(0,0,100,80);
-    gg.addColorStop(0,'rgba(30,42,68,'+(0.30+energy*0.20).toFixed(3)+')');
-    gg.addColorStop(1,'rgba(18,24,42,'+(0.22+energy*0.18).toFixed(3)+')');
-    ctx.fillStyle=gg; ctx.fill(BRAIN);
-    // contorno
-    ctx.lineWidth=0.6/1; ctx.strokeStyle='rgba(120,180,210,'+(0.30+energy*0.30).toFixed(3)+')';
-    ctx.stroke(BRAIN);
-    // sulcos
-    ctx.lineWidth=0.45; ctx.strokeStyle='rgba(120,170,205,'+(0.16+energy*0.18).toFixed(3)+')';
-    SULCI.forEach(function(s){
-      ctx.beginPath(); ctx.moveTo(s[0][0],s[0][1]);
-      for(var i=1;i<s.length;i++){
-        var p0=s[i-1],p1=s[i];
-        ctx.quadraticCurveTo((p0[0]+p1[0])/2+2.5,(p0[1]+p1[1])/2,p1[0],p1[1]);
-      }
-      ctx.stroke();
-    });
-    // cerebelo
-    ctx.beginPath(); ctx.ellipse(78,57,10,6.5,0.25,0,Math.PI*2);
-    ctx.strokeStyle='rgba(120,170,205,'+(0.20+energy*0.15).toFixed(3)+')'; ctx.lineWidth=0.5; ctx.stroke();
-    // tronco encefálico
-    ctx.beginPath(); ctx.moveTo(62,60); ctx.quadraticCurveTo(60,68,56,73);
-    ctx.lineWidth=2.2; ctx.strokeStyle='rgba(120,170,205,'+(0.16+energy*0.12).toFixed(3)+')'; ctx.stroke();
-    ctx.restore();
+    // ── malha plexus: fios finos ciano + pontos amarelos/laranja, estática (sem vibração) ──
+    ctx.lineWidth=0.55;
+    ctx.strokeStyle='rgba(90,175,205,0.28)';
+    ctx.beginPath();
+    for(var li=0; li<mesh.links.length; li++){
+      var L=mesh.links[li], P1=toScreen(mesh.pts[L[0]].nx, mesh.pts[L[0]].ny), P2=toScreen(mesh.pts[L[1]].nx, mesh.pts[L[1]].ny);
+      ctx.moveTo(P1.x,P1.y); ctx.lineTo(P2.x,P2.y);
+    }
+    ctx.stroke();
+    for(var pi=0; pi<mesh.pts.length; pi++){
+      var mp=mesh.pts[pi], sp=toScreen(mp.nx, mp.ny);
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, mp.raio, 0, Math.PI*2);
+      ctx.fillStyle=mp.cor; ctx.globalAlpha=0.85; ctx.fill();
+    }
+    ctx.globalAlpha=1;
 
     // sinapses
     sim.edges.forEach(function(e){
@@ -428,13 +464,12 @@ function draw(now){
     sim.nodes.forEach(function(n){
       var c=CLUSTERS[n.cluster]||CLUSTERS.novo, isSel=selected===n.id;
       var age=Math.min((now-n.born)/700,1), scale=.4+.6*(1-Math.pow(1-age,3));
-      var fire=(Math.sin(now*.0015+n.ph)*.5+.5);
-      var R=(n.r*(0.92+fire*0.12))*scale + (n.id==='core'?fire*2.5:0);
+      var R=n.r*scale + (n.id==='core'?1.5:0);
       if(!isFinite(R)||R<0.5) R=0.5;
-      var gR=R*(isSel?3.4:2.4+energy);
+      var gR=R*(isSel?3.4:2.4);
       if(!isFinite(gR)||gR<=R) gR=R+1;
       var g=ctx.createRadialGradient(n.x,n.y,0,n.x,n.y,gR);
-      g.addColorStop(0,c.glow+(isSel?.6:.24+fire*.14+energy*.22).toFixed(3)+')');
+      g.addColorStop(0,c.glow+(isSel?.6:.30).toFixed(3)+')');
       g.addColorStop(1,c.glow+'0)');
       ctx.beginPath(); ctx.arc(n.x,n.y,gR,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
       ctx.beginPath(); ctx.arc(n.x,n.y,R,0,Math.PI*2); ctx.fillStyle=c.main; ctx.fill();
@@ -823,6 +858,7 @@ function listarCompromissos(a){
   .then(function(r){ return r.text(); })
   .then(function(t){
     log('calendario: '+t.slice(0,120));
+    if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); say('O calendário recusou: chave incorreta.'); return; }
     var j; try{ j=JSON.parse(t); }catch(e){ bubble('err','Resposta inesperada: '+t.slice(0,200)); return; }
     if(j.erro){ bubble('err',j.erro); return; }
     var lista=j.eventos||[];
