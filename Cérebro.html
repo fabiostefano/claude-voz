@@ -9,6 +9,11 @@
 <meta name="theme-color" content="#06080E">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  #bg{position:fixed;inset:0;z-index:0;background:#06080E url('fundo-friday.jpg') no-repeat center 42%;
+    background-size:cover;opacity:0.92}
+  #bgFade{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 42%, rgba(6,8,14,0) 30%, rgba(6,8,14,0.55) 78%, rgba(6,8,14,0.92) 100%)}
+  canvas{position:relative;z-index:2}
   html,body{width:100%;height:100%;overflow:hidden;background:#06080E;
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
   canvas{display:block;touch-action:none}
@@ -122,6 +127,8 @@
 </head>
 <body>
 
+<div id="bg"></div>
+<div id="bgFade"></div>
 <canvas id="c"></canvas>
 
 <div id="header">
@@ -229,13 +236,13 @@ var focusNode=null;
 
 /* lobos: cada cluster tem uma âncora dentro da silhueta (coords normalizadas 0..100 x 0..80) */
 var CLUSTERS={
-  core:   {main:'#5FD4D0',glow:'rgba(95,212,208,',label:'Núcleo',       ax:50,ay:34},
-  vale:   {main:'#5B8FB0',glow:'rgba(91,143,176,',label:'Parietal · Vale',    ax:54,ay:17},
-  calango:{main:'#D0A93B',glow:'rgba(208,169,59,',label:'Occipital · Calango',ax:76,ay:33},
-  dev:    {main:'#9B84DD',glow:'rgba(155,132,221,',label:'Frontal · Dev',     ax:27,ay:31},
-  tri:    {main:'#4FB08A',glow:'rgba(79,176,138,',label:'Temporal · Triatlo', ax:45,ay:52},
-  gmail:  {main:'#E0655F',glow:'rgba(224,101,95,',label:'Gmail',        ax:29,ay:50},
-  novo:   {main:'#E07A5F',glow:'rgba(224,122,95,',label:'Novo tema',    ax:64,ay:51}
+  core:   {main:'#5FD4D0',glow:'rgba(95,212,208,',label:'Núcleo',       ax:48,ay:30},
+  vale:   {main:'#5B8FB0',glow:'rgba(91,143,176,',label:'Parietal · Vale',    ax:52,ay:12},
+  calango:{main:'#D0A93B',glow:'rgba(208,169,59,',label:'Occipital · Calango',ax:76,ay:26},
+  dev:    {main:'#9B84DD',glow:'rgba(155,132,221,',label:'Frontal · Dev',     ax:22,ay:22},
+  tri:    {main:'#4FB08A',glow:'rgba(79,176,138,',label:'Temporal · Triatlo', ax:44,ay:46},
+  gmail:  {main:'#E0655F',glow:'rgba(224,101,95,',label:'Gmail',        ax:64,ay:44},
+  novo:   {main:'#E07A5F',glow:'rgba(224,122,95,',label:'Novo tema',    ax:34,ay:38}
 };
 
 var SEED={
@@ -315,18 +322,22 @@ var SULCI=[
 ];
 function toScreen(x,y){ return { x:BX+x*BSX, y:BY+y*BSY }; }
 function fitBrain(){
-  var availW=W*0.94, availH=H-190;
+  // a imagem de fundo usa 'cover' centrada em 42% da altura; o cérebro nela ocupa
+  // aproximadamente 8-88% da largura e 4-62% da altura visíveis
+  var availW = W*0.80;
+  var availH = H*0.52;
   BSX = availW/100;
   BSY = availH/80;
-  BX=(W-100*BSX)/2; BY=88+(availH-80*BSY)/2;
-  BS=(BSX+BSY)/2;   // média — usada só como escala aproximada para a física (repulsão, molas)
+  BX = (W - 100*BSX)/2;
+  BY = H*0.14;
+  BS = (BSX+BSY)/2;   // escala média — usada só pela física (repulsão, molas)
 }
 function inBrain(x,y){
-  // testa em coordenadas normalizadas usando a matriz atual
-  // zera a transformação (inclusive o DPR) antes do teste — o bug do deslocamento em telas de alta densidade vinha daqui
-  ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.translate(BX,BY); ctx.scale(BSX,BSY);
-  var ok=ctx.isPointInPath(BRAIN,x,y);
-  ctx.restore(); return ok;
+  // elipse ajustada à mancha do cérebro na imagem de fundo (independente do DPR)
+  var cx = BX + 48*BSX, cy = BY + 30*BSY;
+  var rx = 45*BSX, ry = 31*BSY;
+  var dx = (x-cx)/rx, dy = (y-cy)/ry;
+  return (dx*dx + dy*dy) <= 1;
 }
 
 /* ═════ MALHA PLEXUS (estética do fundo — pontos e fios) ═════ */
@@ -433,21 +444,7 @@ function draw(now){
     physics(); ctx.clearRect(0,0,W,H);
     var boost=1+energy*2.2;
 
-    // ── malha plexus: fios finos ciano + pontos amarelos/laranja, estática (sem vibração) ──
-    ctx.lineWidth=1.1;
-    ctx.strokeStyle='rgba(90,175,205,0.38)';
-    ctx.beginPath();
-    for(var li=0; li<mesh.links.length; li++){
-      var L=mesh.links[li], P1=toScreen(mesh.pts[L[0]].nx, mesh.pts[L[0]].ny), P2=toScreen(mesh.pts[L[1]].nx, mesh.pts[L[1]].ny);
-      ctx.moveTo(P1.x,P1.y); ctx.lineTo(P2.x,P2.y);
-    }
-    ctx.stroke();
-    for(var pi=0; pi<mesh.pts.length; pi++){
-      var mp=mesh.pts[pi], sp=toScreen(mp.nx, mp.ny);
-      ctx.beginPath(); ctx.arc(sp.x, sp.y, mp.raio, 0, Math.PI*2);
-      ctx.fillStyle=mp.cor; ctx.globalAlpha=0.85; ctx.fill();
-    }
-    ctx.globalAlpha=1;
+    // fundo agora é a imagem (#bg) — a malha decorativa foi removida daqui
 
     // sinapses
     sim.edges.forEach(function(e){
@@ -1621,28 +1618,5 @@ window.addEventListener('DOMContentLoaded',function(){
   });
 });
 </script>
- <style>
- /* ===== ACESSIBILIDADE: fonte e alvos de toque ===== */
-html { font-size: 18px !important; }
-
-.msg, .mensagem, .bubble, .chat-msg, p, span, div[class*="msg"] {
-  font-size: 1.05rem !important;
-  line-height: 1.5 !important;
-}
-
-button, .btn, [role="button"], .icone, .icon {
-  min-width: 52px !important;
-  min-height: 52px !important;
-  font-size: 1.2rem !important;
-}
-
-input, textarea, [contenteditable] {
-  font-size: 1.1rem !important;
-  padding: 14px !important;
-}
-
-svg { min-width: 28px; min-height: 28px; }
-</style>
 </body>
 </html>
-
