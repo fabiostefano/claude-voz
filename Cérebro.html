@@ -191,6 +191,11 @@
       <input id="cfgChave" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="senha definida no script">
     </div>
     <div class="fld">
+      <label>URL do friday-hub  ★</label>
+      <input id="cfgHub" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
+      <small>Servidor único: e-mail, calendário, backup e limpeza do Gmail. Se preenchido, substitui os campos abaixo.</small>
+    </div>
+    <div class="fld">
       <label>URL do friday-backup</label>
       <input id="cfgBackup" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
       <small>Salva uma cópia do cérebro no seu Google Drive automaticamente. Usa a mesma chave do friday-email.</small>
@@ -230,7 +235,7 @@ window.onerror=function(m,s,l){ log('✖ '+m+' @'+l); return false; };
 window.addEventListener('unhandledrejection',function(e){ log('✖ promise: '+(e.reason&&e.reason.message||e.reason)); });
 
 /* ═════ ESTADO ═════ */
-var cfg={friday:'',gmail:'',email:'',chave:'',calendar:'',backup:'',speak:true,cont:false,auto:true,labels:false};
+var cfg={friday:'',hub:'',gmail:'',email:'',chave:'',calendar:'',backup:'',speak:true,cont:false,auto:true,labels:false};
 var graph=null,chatHistory=[],memoria='',busy=false,listening=false,speaking=false,pending=false,micGranted=false;
 var focusNode=null;
 
@@ -282,7 +287,7 @@ function loadState(){
   try{ chatHistory=JSON.parse(stGet('fr-chat')||'[]')||[]; }catch(e){ chatHistory=[]; }
   memoria=stGet('fr-memoria')||'';
   $('cfgFriday').value=cfg.friday||''; $('cfgGmail').value=cfg.gmail||'';
-  $('cfgEmail').value=cfg.email||''; $('cfgChave').value=cfg.chave||''; $('cfgCalendar').value=cfg.calendar||''; $('cfgBackup').value=cfg.backup||'';
+  $('cfgEmail').value=cfg.email||''; $('cfgChave').value=cfg.chave||''; $('cfgCalendar').value=cfg.calendar||''; $('cfgBackup').value=cfg.backup||''; $('cfgHub').value=cfg.hub||'';
   setSw('swSpeak',cfg.speak); setSw('swCont',cfg.cont); setSw('swAuto',cfg.auto); setSw('swLabels',cfg.labels);
 }
 function save(){
@@ -614,26 +619,56 @@ function abrirGmailEmAba(url,motivo){
   }
 }
 function runGmailCleanup(){
-  if(!cfg.gmail){ say('Preciso da URL do LimpezaGmail.'); openP('settings'); return; }
-  openP('chat'); bubble('sys','📧 chamando LimpezaGmail…'); say('Rodando a limpeza do Gmail.'); energy=1.3;
-  var url=gmailURL();
-  var ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
-  var to=setTimeout(function(){ if(ctrl) ctrl.abort(); },25000);
-  fetch(url,{method:'GET',redirect:'follow',signal:ctrl?ctrl.signal:undefined})
-    .then(function(r){ clearTimeout(to); log('gmail HTTP '+r.status); return r.text(); })
+  var url = urlDe('gmail');
+  if(!url){ bubble('err','Configure a URL do friday-hub na ⚙.'); say('Falta configurar o servidor.'); openP('settings'); return; }
+  openP('chat'); bubble('sys','📧 limpando o Gmail…'); say('Rodando a limpeza do Gmail.'); energy=1.3;
+
+  if(cfg.hub){
+    // hub responde JSON: resultado direto no chat, sem abrir janela
+    chamarHub('gmail',{acao:'limpar_gmail'})
+      .then(function(t){
+        log('limpeza: '+t.slice(0,120));
+        if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); say('A limpeza foi recusada.'); return; }
+        var j; try{ j=JSON.parse(t); }catch(e){ bubble('ai',t.slice(0,300)); say('Limpeza concluída.'); return; }
+        var msg = j.mensagem || (j.movidos+' e-mail(s) movidos para a lixeira.');
+        bubble('ai','🧹 '+msg); say(msg);
+        addNode({id:'limp'+Date.now().toString(36),label:'Limpeza '+new Date().toLocaleDateString('pt-BR'),
+          cluster:'gmail',detail:msg+' Executada em '+new Date().toLocaleString('pt-BR')+'.',connectTo:['limpeza']});
+        save();
+      })
+      .catch(function(e){ log('✖ limpeza: '+e.message); bubble('err','Falha na limpeza: '+e.message); say('Não consegui limpar.'); });
+    return;
+  }
+
+  // servidor antigo devolve HTML: mantém o plano B da aba nova
+  var u = url + (url.indexOf('?')>-1?'&':'?') + 'origem=cerebro&t=' + Date.now();
+  fetch(u,{method:'GET',redirect:'follow'})
+    .then(function(r){ return r.text(); })
     .then(function(txt){
       txt=(txt||'').trim();
-      if(/^<!DOCTYPE|^<html/i.test(txt)){ abrirGmailEmAba(url,'devolveu HTML'); return; }
-      var clean=txt.length>500?txt.slice(0,500)+'…':(txt||'Execução concluída.');
-      bubble('ai',clean); say('Limpeza concluída.');
+      if(/^<!DOCTYPE|^<html/i.test(txt)){ abrirGmailEmAba(u,'servidor antigo devolve HTML'); return; }
+      bubble('ai',txt.slice(0,500)); say('Limpeza concluída.');
       addNode({id:'limp'+Date.now().toString(36),label:'Limpeza '+new Date().toLocaleDateString('pt-BR'),
-        cluster:'gmail',detail:clean,connectTo:['limpeza']});
+        cluster:'gmail',detail:txt.slice(0,300),connectTo:['limpeza']});
       save();
     })
-    .catch(function(e){
-      clearTimeout(to); log('✖ gmail: '+(e.name||'')+' '+e.message);
-      abrirGmailEmAba(url,e.name==='AbortError'?'demorou demais':'bloqueio do navegador');
-    });
+    .catch(function(e){ log('✖ limpeza: '+e.message); abrirGmailEmAba(u,'bloqueio do navegador'); });
+}
+function urlDe(servico){
+  if(cfg.hub) return cfg.hub;
+  if(servico==='email')    return cfg.email;
+  if(servico==='calendar') return cfg.calendar;
+  if(servico==='backup')   return cfg.backup;
+  if(servico==='gmail')    return cfg.gmail;
+  return '';
+}
+function chamarHub(servico, payload){
+  var url = urlDe(servico);
+  if(!url) return Promise.reject(new Error('configure a URL do friday-hub na ⚙'));
+  payload.chave = cfg.chave||'';
+  return fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify(payload),redirect:'follow'})
+    .then(function(r){ return r.text(); });
 }
 
 /* ═════ E-MAIL E WHATSAPP ═════ */
@@ -646,19 +681,16 @@ function blobParaBase64(blob){
   });
 }
 function enviarEmail(a){
-  if(!cfg.email){ bubble('err','Configure a URL do friday-email na ⚙.'); say('Falta configurar o servidor de e-mail.'); openP('settings'); return; }
+  if(!urlDe('email')){ bubble('err','Configure a URL do friday-hub na ⚙.'); say('Falta configurar o servidor.'); openP('settings'); return; }
   bubble('sys','✉️ enviando e-mail…');
-  var payload={chave:cfg.chave||'',assunto:a.assunto||'Mensagem da FRIDAY',corpo:a.corpo||'',para:a.para||''};
+  var payload={acao:'enviar_email',assunto:a.assunto||'Mensagem da FRIDAY',corpo:a.corpo||'',para:a.para||''};
   var prep=Promise.resolve();
   if(a.anexar&&ultimoArquivo){
     prep=blobParaBase64(ultimoArquivo.blob).then(function(b64){
       payload.anexos=[{nome:ultimoArquivo.nome,mime:ultimoArquivo.mime,base64:b64}];
     });
   }
-  prep.then(function(){
-    return fetch(cfg.email,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify(payload),redirect:'follow'});
-  }).then(function(r){ return r.text(); })
+  prep.then(function(){ return chamarHub('email', payload); })
   .then(function(t){
     log('email: '+t.slice(0,120));
     if(/ok/i.test(t)){ bubble('ai','✉️ E-mail enviado'+(payload.anexos?' com anexo: '+payload.anexos[0].nome:'')+'.'); say('E-mail enviado.'); }
@@ -667,12 +699,9 @@ function enviarEmail(a){
   .catch(function(e){ log('✖ email: '+e.message); bubble('err','Falha no envio: '+e.message); say('Falha no envio do e-mail.'); });
 }
 function lerEmails(a){
-  if(!cfg.email){ bubble('err','Configure a URL do friday-email na ⚙.'); openP('settings'); return; }
+  if(!urlDe('email')){ bubble('err','Configure a URL do friday-hub na ⚙.'); openP('settings'); return; }
   bubble('sys','📬 buscando e-mails…'); say('Lendo sua caixa de entrada.');
-  var payload={chave:cfg.chave||'',acao:'ler',quantos:Math.min((a&&a.quantos)||5,15),filtro:(a&&a.filtro)||''};
-  fetch(cfg.email,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(payload),redirect:'follow'})
-  .then(function(r){ return r.text(); })
+  chamarHub('email',{acao:'ler_emails',quantos:Math.min((a&&a.quantos)||5,15),filtro:(a&&a.filtro)||''})
   .then(function(t){
     log('ler emails: '+t.slice(0,100));
     var j; try{ j=JSON.parse(t); }catch(e){ bubble('err','Resposta inesperada: '+t.slice(0,200)); return; }
@@ -840,13 +869,10 @@ function criarTimer(a){
 
 /* ═════ CALENDÁRIO (via friday-calendar, Apps Script) ═════ */
 function criarCompromisso(a){
-  if(!cfg.calendar){ bubble('err','Configure a URL do friday-calendar na ⚙.'); openP('settings'); return; }
+  if(!urlDe('calendar')){ bubble('err','Configure a URL do friday-hub na ⚙.'); openP('settings'); return; }
   bubble('sys','📅 criando compromisso…');
-  var payload={chave:cfg.chave||'',acao:'criar',titulo:a.titulo||'Compromisso',data:a.data,hora:a.hora,
-    duracaoMin:a.duracaoMin||60,local:a.local||'',descricao:a.descricao||''};
-  fetch(cfg.calendar,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(payload),redirect:'follow'})
-  .then(function(r){ return r.text(); })
+  chamarHub('calendar',{acao:'criar_evento',titulo:a.titulo||'Compromisso',data:a.data,hora:a.hora,
+    duracaoMin:a.duracaoMin||60,local:a.local||'',descricao:a.descricao||''})
   .then(function(t){
     log('calendario: '+t.slice(0,120));
     if(/ok/i.test(t)){ bubble('ai','📅 '+t.replace(/^ok:\s*/i,'')); say('Compromisso criado.'); }
@@ -855,12 +881,9 @@ function criarCompromisso(a){
   .catch(function(e){ log('✖ calendario: '+e.message); bubble('err','Falha: '+e.message); });
 }
 function listarCompromissos(a){
-  if(!cfg.calendar){ bubble('err','Configure a URL do friday-calendar na ⚙.'); openP('settings'); return; }
+  if(!urlDe('calendar')){ bubble('err','Configure a URL do friday-hub na ⚙.'); openP('settings'); return; }
   bubble('sys','📅 buscando compromissos…');
-  var payload={chave:cfg.chave||'',acao:'listar',periodo:a.periodo||'hoje'};
-  fetch(cfg.calendar,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(payload),redirect:'follow'})
-  .then(function(r){ return r.text(); })
+  chamarHub('calendar',{acao:'listar_eventos',periodo:a.periodo||'hoje'})
   .then(function(t){
     log('calendario: '+t.slice(0,120));
     if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); say('O calendário recusou: chave incorreta.'); return; }
@@ -889,16 +912,14 @@ function enviarWhatsApp(a){
 /* ═════ BACKUP NO DRIVE (friday-backup) ═════ */
 var backupTimer=null, ultimoBackup=0;
 function agendarBackup(){
-  if(!cfg.backup) return;
+  if(!urlDe('backup')) return;
   clearTimeout(backupTimer);
   backupTimer=setTimeout(fazerBackup, 90*1000);   // 90s de silêncio antes de gravar — evita gravar a cada tecla
 }
 function fazerBackup(silencioso){
-  if(!cfg.backup) return Promise.resolve(false);
+  if(!urlDe('backup')) return Promise.resolve(false);
   var dados={graph:graph, chatHistory:chatHistory.slice(-40), memoria:memoria, quando:new Date().toISOString()};
-  return fetch(cfg.backup,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({chave:cfg.chave||'',acao:'salvar',dados:JSON.stringify(dados)}),redirect:'follow'})
-  .then(function(r){ return r.text(); })
+  return chamarHub('backup',{acao:'salvar',dados:JSON.stringify(dados)})
   .then(function(t){
     log('backup: '+t.slice(0,100));
     ultimoBackup=Date.now();
@@ -908,11 +929,9 @@ function fazerBackup(silencioso){
   .catch(function(e){ log('✖ backup: '+e.message); if(!silencioso) bubble('err','Falha no backup: '+e.message); return false; });
 }
 function restaurarBackup(){
-  if(!cfg.backup){ bubble('err','Configure a URL do friday-backup na ⚙.'); return; }
+  if(!urlDe('backup')){ bubble('err','Configure a URL do friday-hub na ⚙.'); return; }
   bubble('sys','☁ buscando o último backup…');
-  fetch(cfg.backup,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({chave:cfg.chave||'',acao:'carregar'}),redirect:'follow'})
-  .then(function(r){ return r.text(); })
+  chamarHub('backup',{acao:'carregar'})
   .then(function(t){
     if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); return; }
     var j; try{ j=JSON.parse(t); }catch(e){ bubble('err','Resposta inesperada: '+t.slice(0,200)); return; }
@@ -1565,7 +1584,7 @@ window.addEventListener('DOMContentLoaded',function(){
   $('btnSaveCfg').addEventListener('click',function(){
     cfg.friday=$('cfgFriday').value.trim(); cfg.gmail=$('cfgGmail').value.trim();
     cfg.email=$('cfgEmail').value.trim(); cfg.chave=$('cfgChave').value.trim();
-    cfg.calendar=$('cfgCalendar').value.trim(); cfg.backup=$('cfgBackup').value.trim(); save();
+    cfg.calendar=$('cfgCalendar').value.trim(); cfg.backup=$('cfgBackup').value.trim(); cfg.hub=$('cfgHub').value.trim(); save();
     log('config salva'); closeP('settings'); say('Configuração salva.');
   });
   $('btnTestMic').addEventListener('click',function(){
