@@ -945,6 +945,49 @@ function restaurarBackup(){
   .catch(function(e){ log('✖ restaurar: '+e.message); bubble('err','Falha ao restaurar: '+e.message); });
 }
 
+
+/* ═════ LEITURA DO PRÓPRIO CÓDIGO ═════ */
+function lerCodigo(a){
+  if(!cfg.hub){ bubble('err','A leitura de código exige o friday-hub configurado na ⚙.'); openP('settings'); return; }
+  var modo = a.modo || 'mapa';
+  var rotulo = { mapa:'📖 lendo o mapa do código…', trecho:'📖 lendo o trecho…',
+                 buscar:'🔎 buscando no código…', arquivos:'📁 listando arquivos…' }[modo] || '📖 lendo…';
+  bubble('sys', rotulo); energy=1.1;
+
+  var payload;
+  if(modo==='arquivos')    payload={acao:'listar_arquivos'};
+  else if(modo==='trecho') payload={acao:'ler_trecho', arquivo:a.arquivo, funcao:a.funcao, de:a.de, ate:a.ate};
+  else if(modo==='buscar') payload={acao:'buscar_codigo', arquivo:a.arquivo, termo:a.termo};
+  else                     payload={acao:'mapa_codigo', arquivo:a.arquivo};
+
+  chamarHub('codigo', payload)
+    .then(function(t){
+      log('codigo: '+t.slice(0,100));
+      if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); say('Não consegui ler o código.'); return; }
+      var j; try{ j=JSON.parse(t); }catch(e){ bubble('err','Resposta inesperada: '+t.slice(0,200)); return; }
+
+      var resumo;
+      if(j.arquivos){
+        resumo = 'Arquivos no repositório:\n' + j.arquivos.map(function(f){ return '· '+f.nome+' ('+f.kb+' KB)'; }).join('\n');
+      } else if(j.funcoes){
+        resumo = j.arquivo+' — '+j.totalLinhas+' linhas, '+j.totalKB+' KB\n\nSeções:\n'+
+          j.secoes.map(function(s){ return '  L'+s.linha+' · '+s.titulo; }).join('\n')+
+          '\n\nFunções ('+j.funcoes.length+'):\n'+
+          j.funcoes.map(function(f){ return '  L'+f.linha+' · '+f.nome+'('+f.args+')'; }).join('\n');
+      } else if(j.trecho){
+        resumo = j.arquivo+' · linhas '+j.de+'-'+j.ate+'\n\n'+j.trecho;
+      } else if(j.achados){
+        resumo = '"'+j.termo+'" em '+j.arquivo+': '+j.ocorrencias+' ocorrência(s)\n'+
+          j.achados.map(function(x){ return '  L'+x.linha+': '+x.texto; }).join('\n');
+      } else resumo = t.slice(0,600);
+
+      bubble('ai', resumo);
+      // devolve ao modelo para ele analisar de fato
+      sendMsg('[CÓDIGO LIDO — analise e responda com base nisto, não invente]:\n'+resumo.slice(0,6000));
+    })
+    .catch(function(e){ log('✖ codigo: '+e.message); bubble('err','Falha ao ler o código: '+e.message); });
+}
+
 /* ═════ CONVERSA ═════ */
 /* ─── ANEXOS ─── */
 var anexos=[];                 // {name,size,kind,media,data,preview}
@@ -1067,7 +1110,19 @@ function SYSTEM(){
   '- {"tipo":"criar_alarme","hora":7,"minuto":30,"mensagem":"opcional"} — abre o relógio do Android já configurado nesse horário (formato 24h).\n'+
   '- {"tipo":"criar_timer","segundos":300,"mensagem":"opcional"} — inicia um timer/cronômetro regressivo nativo do Android.\n'+
   '- {"tipo":"criar_compromisso","titulo":"...","data":"AAAA-MM-DD","hora":"HH:MM","duracaoMin":60,"local":"opcional","descricao":"opcional"} — cria um evento no Google Calendar dele. Use a DATA E HORA ATUAIS informadas acima para resolver "amanhã", "sexta que vem" etc.\n'+
-  '- {"tipo":"listar_compromissos","periodo":"hoje|amanha|semana"} — lista os compromissos da agenda no período.\n\n'+
+  '- {"tipo":"listar_compromissos","periodo":"hoje|amanha|semana"} — lista os compromissos da agenda no período.\n'+
+  '- {"tipo":"ler_codigo","modo":"mapa|trecho|buscar|arquivos","arquivo":"Cérebro.html","funcao":"nome","de":100,"ate":160,"termo":"texto"} — lê o código-fonte real do app no GitHub.\n'+
+  '    · modo "arquivos": lista os arquivos do repositório\n'+
+  '    · modo "mapa": índice de seções e funções com o número da linha (use PRIMEIRO, é leve)\n'+
+  '    · modo "trecho": o código de uma função específica ou de um intervalo de linhas\n'+
+  '    · modo "buscar": onde um termo aparece no arquivo\n\n'+
+  'HONESTIDADE TÉCNICA — regra que vale acima de qualquer outra:\n'+
+  'Quando o Fábio relatar um bug ou perguntar por que algo acontece no app, NUNCA invente a causa. '+
+  'Você não enxerga o próprio código nem os servidores por padrão — então use {"tipo":"ler_codigo"} para ver de verdade antes de responder. '+
+  'Fluxo: primeiro modo "mapa" ou "buscar" para localizar, depois modo "trecho" para ler o bloco relevante.\n'+
+  'Se a informação necessária estiver fora do seu alcance (código do Apps Script, logs do servidor, configuração do celular), diga isso com clareza e peça o dado, '+
+  'ou sugira levar ao Claude com o contexto pronto. É melhor dizer "preciso ver X para responder" do que apresentar um palpite como diagnóstico. '+
+  'Nunca numere ou formalize como "bug confirmado" algo que você apenas supôs.\n\n'+
   'ANEXOS: quando vierem imagens, PDFs ou arquivos de texto, analise o conteúdo e responda sobre ele. '+
   'Se o material for relevante para um projeto do Fábio, crie um nó novo com o resumo no campo detail. '+
   'Documentos técnicos (P&ID, relatórios, planilhas) vão no cluster vale; texto do livro vai em calango; código vai em dev.\n\n'+
@@ -1478,6 +1533,7 @@ function sendMsg(text){
           else if(p.action.tipo==='criar_timer') criarTimer(p.action);
           else if(p.action.tipo==='criar_compromisso') criarCompromisso(p.action);
           else if(p.action.tipo==='listar_compromissos') listarCompromissos(p.action);
+          else if(p.action.tipo==='ler_codigo') lerCodigo(p.action);
           else if(p.action.tipo==='ler_emails') lerEmails(p.action);
         };
         // se um arquivo está sendo gerado nesta mesma resposta, espera ficar pronto para poder anexar
