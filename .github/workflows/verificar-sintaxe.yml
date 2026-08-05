@@ -1,0 +1,79 @@
+name: Verificar sintaxe
+
+# Roda a cada commit no repositório e devolve o erro exato,
+# automatizando metade do ciclo de teste que hoje depende do Claude.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  sintaxe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validar o JavaScript dentro dos arquivos HTML
+        run: |
+          cat > /tmp/verificar.js <<'FIM'
+          const fs = require('fs');
+          const path = require('path');
+
+          const htmls = fs.readdirSync('.').filter(f => f.toLowerCase().endsWith('.html'));
+          if (!htmls.length) { console.log('Nenhum HTML na raiz.'); process.exit(0); }
+
+          let falhou = false;
+
+          for (const arquivo of htmls) {
+            const conteudo = fs.readFileSync(arquivo, 'utf8');
+            const blocos = [...conteudo.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)];
+
+            if (!blocos.length) { console.log(`- ${arquivo}: sem script embutido`); continue; }
+
+            blocos.forEach((b, i) => {
+              // linha onde o bloco começa, para o erro apontar o lugar certo
+              const antes = conteudo.slice(0, b.index).split('\n').length;
+              try {
+                new Function(b[1]);
+                const linhas = b[1].split('\n').length;
+                console.log(`✔ ${arquivo} · bloco ${i + 1} (${linhas} linhas): sintaxe OK`);
+              } catch (e) {
+                falhou = true;
+                console.log(`✖ ${arquivo} · bloco ${i + 1}: ${e.message}`);
+                console.log(`  o bloco começa por volta da linha ${antes} do arquivo`);
+              }
+            });
+
+            // avisos que não reprovam, mas costumam indicar problema
+            const ids = [...conteudo.matchAll(/id="([\w-]+)"/g)].map(m => m[1]);
+            const repetidos = [...new Set(ids.filter(x => ids.indexOf(x) !== ids.lastIndexOf(x)))];
+            if (repetidos.length) console.log(`  ⚠ ids duplicados em ${arquivo}: ${repetidos.join(', ')}`);
+
+            const script = blocos.map(b => b[1]).join('\n');
+            const declaradas = new Set([...script.matchAll(/function\s+(\w+)\s*\(/g)].map(m => m[1]));
+            const chamadasDom = [...conteudo.matchAll(/on\w+="(\w+)\(/g)].map(m => m[1]);
+            const ausentes = [...new Set(chamadasDom.filter(f => !declaradas.has(f)))];
+            if (ausentes.length) console.log(`  ⚠ chamadas inline sem função em ${arquivo}: ${ausentes.join(', ')}`);
+          }
+
+          if (falhou) { console.log('\nReprovado: corrija a sintaxe antes de usar esta versão.'); process.exit(1); }
+          console.log('\nAprovado: todos os arquivos passaram na verificação.');
+          FIM
+          node /tmp/verificar.js
+
+      - name: Validar os JSON do repositório
+        run: |
+          for f in $(ls *.json 2>/dev/null); do
+            if node -e "JSON.parse(require('fs').readFileSync('$f','utf8'))" 2>/dev/null; then
+              echo "✔ $f: JSON válido"
+            else
+              echo "✖ $f: JSON inválido"; exit 1
+            fi
+          done
