@@ -199,6 +199,11 @@
       <small>Servidor único: e-mail, calendário, backup e limpeza do Gmail. Se preenchido, substitui os campos abaixo.</small>
     </div>
     <div class="fld">
+      <label>Chave crítica  ⚠</label>
+      <input id="cfgChaveCritica" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="segunda chave, só para limpeza e casa">
+      <small>Exigida apenas para apagar e-mails e comandar aparelhos. Deve ser DIFERENTE da chave acima. Se ficar vazia, essas ações não funcionam.</small>
+    </div>
+    <div class="fld">
       <label>URL do friday-backup</label>
       <input id="cfgBackup" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec">
       <small>Salva uma cópia do cérebro no seu Google Drive automaticamente. Usa a mesma chave do friday-email.</small>
@@ -220,8 +225,9 @@
     <div class="toggleRow"><span>Falar as respostas</span><button class="sw on" id="swSpeak"></button></div>
     <div class="toggleRow"><span>Escuta contínua</span><button class="sw" id="swCont"></button></div>
     <div class="toggleRow"><span>Criar nós automaticamente</span><button class="sw on" id="swAuto"></button></div>
-    <div class="toggleRow" style="border:none"><span>Mostrar todos os nomes</span><button class="sw" id="swLabels"></button></div>
+    <div class="toggleRow" style="border:none"><span>Mostrar o nome de todos os nós</span><button class="sw" id="swLabels"></button></div>
     <button class="bigBtn" id="btnSaveCfg">Salvar configuração</button>
+    <button class="bigBtn ghost" id="btnDedupe">🧹 Limpar nós duplicados</button>
     <button class="bigBtn ghost" id="btnBackupNow">☁ Fazer backup agora</button>
     <button class="bigBtn ghost" id="btnRestore">☁ Restaurar último backup</button>
     <button class="bigBtn ghost" id="btnTestMic">Testar microfone</button>
@@ -247,7 +253,7 @@ window.onerror=function(m,s,l){ log('✖ '+m+' @'+l); return false; };
 window.addEventListener('unhandledrejection',function(e){ log('✖ promise: '+(e.reason&&e.reason.message||e.reason)); });
 
 /* ═════ ESTADO ═════ */
-var cfg={friday:'',hub:'',gmail:'',email:'',chave:'',calendar:'',backup:'',ui:1.25,brief:false,ultimoBrief:0,speak:true,cont:false,auto:true,labels:false};
+var cfg={friday:'',hub:'',gmail:'',email:'',chave:'',chaveCritica:'',calendar:'',backup:'',ui:1.25,brief:false,ultimoBrief:0,speak:true,cont:false,auto:true,labels:false};
 var graph=null,chatHistory=[],memoria='',busy=false,listening=false,speaking=false,pending=false,micGranted=false;
 var focusNode=null;
 
@@ -299,7 +305,7 @@ function loadState(){
   try{ chatHistory=JSON.parse(stGet('fr-chat')||'[]')||[]; }catch(e){ chatHistory=[]; }
   memoria=stGet('fr-memoria')||'';
   $('cfgFriday').value=cfg.friday||''; $('cfgGmail').value=cfg.gmail||'';
-  $('cfgEmail').value=cfg.email||''; $('cfgChave').value=cfg.chave||''; $('cfgCalendar').value=cfg.calendar||''; $('cfgBackup').value=cfg.backup||''; $('cfgHub').value=cfg.hub||'';
+  $('cfgEmail').value=cfg.email||''; $('cfgChave').value=cfg.chave||''; $('cfgCalendar').value=cfg.calendar||''; $('cfgBackup').value=cfg.backup||''; $('cfgHub').value=cfg.hub||''; $('cfgChaveCritica').value=cfg.chaveCritica||'';
   setSw('swSpeak',cfg.speak); setSw('swCont',cfg.cont); setSw('swAuto',cfg.auto); setSw('swLabels',cfg.labels);
   setSw('swBrief',cfg.brief); aplicarEscala();
 }
@@ -505,7 +511,7 @@ function draw(now){
       ctx.beginPath(); ctx.arc(n.x,n.y,R,0,Math.PI*2); ctx.fillStyle=c.main; ctx.fill();
       if(isSel){ ctx.beginPath(); ctx.arc(n.x,n.y,R+4,0,Math.PI*2);
         ctx.strokeStyle='rgba(255,255,255,.5)'; ctx.lineWidth=1.2; ctx.stroke(); }
-      if(cfg.labels||n.hub||isSel||n.cluster==='novo'){
+      if(cfg.labels||n.hub||isSel){
         var fe=Math.round((n.id==='core'?16:14)*(1+((Number(cfg.ui)||1.25)-1)*0.6));
         ctx.font=(n.id==='core'?'600 ':'500 ')+fe+'px sans-serif';
         ctx.textAlign='center';
@@ -642,6 +648,10 @@ function abrirGmailEmAba(url,motivo){
 function runGmailCleanup(){
   var url = urlDe('gmail');
   if(!url){ bubble('err','Configure a URL do friday-hub na ⚙.'); say('Falta configurar o servidor.'); openP('settings'); return; }
+  if(cfg.hub && !cfg.chaveCritica){
+    bubble('err','A limpeza do Gmail exige a Chave crítica. Preencha na ⚙.');
+    say('Falta a chave crítica.'); openP('settings'); return;
+  }
   openP('chat'); bubble('sys','📧 limpando o Gmail…'); say('Rodando a limpeza do Gmail.'); energy=1.3;
 
   if(cfg.hub){
@@ -681,12 +691,20 @@ function urlDe(servico){
   if(servico==='calendar') return cfg.calendar;
   if(servico==='backup')   return cfg.backup;
   if(servico==='gmail')    return cfg.gmail;
+  if(servico==='st' || servico==='codigo') return cfg.hub;
   return '';
 }
+var ACOES_CRITICAS = ['limpar','limpar_gmail','st_comandar'];
 function chamarHub(servico, payload){
   var url = urlDe(servico);
   if(!url) return Promise.reject(new Error('configure a URL do friday-hub na ⚙'));
-  payload.chave = cfg.chave||'';
+  var critica = ACOES_CRITICAS.indexOf(String(payload.acao||'').toLowerCase()) !== -1;
+  if(critica){
+    if(!cfg.chaveCritica) return Promise.reject(new Error('esta ação exige a Chave crítica — preencha na ⚙'));
+    payload.chave = cfg.chaveCritica;
+  } else {
+    payload.chave = cfg.chave||'';
+  }
   return fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify(payload),redirect:'follow'})
     .then(function(r){ return r.text(); });
@@ -1056,6 +1074,59 @@ function briefingAutomatico(forcado){
     .catch(function(e){ log('✖ briefing: '+e.message); if(forcado) bubble('err','Falha no briefing: '+e.message); });
 }
 
+
+/* ═════ SMARTTHINGS ═════ */
+function casaListar(){
+  if(!cfg.hub){ bubble('err','A casa inteligente exige o friday-hub configurado na ⚙.'); openP('settings'); return; }
+  openP('chat'); bubble('sys','🏠 buscando dispositivos…');
+  chamarHub('st',{acao:'st_dispositivos'})
+    .then(function(t){
+      if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); say('Não consegui acessar a casa.'); return; }
+      var j; try{ j=JSON.parse(t); }catch(e){ bubble('err','Resposta inesperada: '+t.slice(0,200)); return; }
+      var l=j.dispositivos||[];
+      if(!l.length){ bubble('ai','Nenhum dispositivo encontrado.'); say('Não achei dispositivos.'); return; }
+      bubble('ai','🏠 Dispositivos ('+l.length+'):\n'+l.map(function(d){ return '· '+d.nome+' — '+d.tipo; }).join('\n'));
+      say('Encontrei '+l.length+' dispositivos.');
+    })
+    .catch(function(e){ log('✖ st: '+e.message); bubble('err','Falha: '+e.message); });
+}
+function casaEstado(a){
+  if(!cfg.hub){ bubble('err','Configure o friday-hub na ⚙.'); openP('settings'); return; }
+  openP('chat'); bubble('sys','🏠 consultando '+(a.dispositivo||'')+'…');
+  chamarHub('st',{acao:'st_estado',dispositivo:a.dispositivo})
+    .then(function(t){
+      if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); say('Não consegui consultar.'); return; }
+      var j; try{ j=JSON.parse(t); }catch(e){ bubble('err',t.slice(0,200)); return; }
+      var e2=j.estado||{}, p=[];
+      if(e2.ligado!==undefined) p.push(e2.ligado?'ligado':'desligado');
+      if(e2.temperatura!==undefined) p.push('temperatura '+e2.temperatura+'°');
+      if(e2.setpoint!==undefined)    p.push('ajustado para '+e2.setpoint+'°');
+      if(e2.modo!==undefined)        p.push('modo '+e2.modo);
+      if(e2.volume!==undefined)      p.push('volume '+e2.volume);
+      var msg=(a.dispositivo||'Dispositivo')+': '+(p.length?p.join(', '):'sem informação de estado');
+      bubble('ai','🏠 '+msg); say(msg);
+    })
+    .catch(function(e){ log('✖ st: '+e.message); bubble('err','Falha: '+e.message); });
+}
+function casaComandar(a){
+  if(!cfg.hub){ bubble('err','Configure o friday-hub na ⚙.'); openP('settings'); return; }
+  if(!cfg.chaveCritica){
+    bubble('err','Comandar aparelhos exige a Chave crítica. Preencha na ⚙.');
+    say('Falta a chave crítica.'); openP('settings'); return;
+  }
+  openP('chat');
+  var desc=(a.comando||'')+' '+(a.dispositivo||'')+(a.valor!==undefined?(' para '+a.valor):'');
+  bubble('sys','🏠 '+desc+'…'); energy=1.2;
+  chamarHub('st',{acao:'st_comandar',dispositivo:a.dispositivo,comando:a.comando,valor:a.valor})
+    .then(function(t){
+      if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); say('O comando falhou.'); return; }
+      var j; try{ j=JSON.parse(t); }catch(e){ bubble('ai',t.slice(0,200)); return; }
+      var msg=(a.dispositivo||'Dispositivo')+' — '+(a.comando||'')+(a.valor!==undefined?(' '+a.valor):'')+'.';
+      bubble('ai','✅ '+msg); say(msg);
+    })
+    .catch(function(e){ log('✖ st: '+e.message); bubble('err','Falha: '+e.message); say('Não consegui enviar o comando.'); });
+}
+
 /* ═════ CONVERSA ═════ */
 /* ─── ANEXOS ─── */
 var anexos=[];                 // {name,size,kind,media,data,preview}
@@ -1180,6 +1251,9 @@ function SYSTEM(){
   '- {"tipo":"criar_compromisso","titulo":"...","data":"AAAA-MM-DD","hora":"HH:MM","duracaoMin":60,"local":"opcional","descricao":"opcional"} — cria um evento no Google Calendar dele. Use a DATA E HORA ATUAIS informadas acima para resolver "amanhã", "sexta que vem" etc.\n'+
   '- {"tipo":"listar_compromissos","periodo":"hoje|amanha|semana"} — lista os compromissos da agenda no período.\n'+
   '- {"tipo":"briefing"} — resume agenda de hoje e e-mails não lidos de uma vez.\n'+
+  '- {"tipo":"casa_listar"} — lista os dispositivos da casa (SmartThings).\n'+
+  '- {"tipo":"casa_estado","dispositivo":"tv da sala"} — consulta se está ligado, temperatura, volume.\n'+
+  '- {"tipo":"casa_comandar","dispositivo":"ar do quarto","comando":"ligar|desligar|temperatura|volume|modo","valor":22} — comanda o aparelho. O nome pode ser parcial, o servidor resolve.\n'+
   '- {"tipo":"ler_codigo","modo":"mapa|trecho|buscar|arquivos","arquivo":"Cérebro.html","funcao":"nome","de":100,"ate":160,"termo":"texto"} — lê o código-fonte real do app no GitHub.\n'+
   '    · modo "arquivos": lista os arquivos do repositório\n'+
   '    · modo "mapa": índice de seções e funções com o número da linha (use PRIMEIRO, é leve)\n'+
@@ -1604,6 +1678,9 @@ function sendMsg(text){
           else if(p.action.tipo==='listar_compromissos') listarCompromissos(p.action);
           else if(p.action.tipo==='ler_codigo') lerCodigo(p.action);
           else if(p.action.tipo==='briefing') briefingAutomatico(true);
+          else if(p.action.tipo==='casa_listar') casaListar();
+          else if(p.action.tipo==='casa_estado') casaEstado(p.action);
+          else if(p.action.tipo==='casa_comandar') casaComandar(p.action);
           else if(p.action.tipo==='ler_emails') lerEmails(p.action);
         };
         // se um arquivo está sendo gerado nesta mesma resposta, espera ficar pronto para poder anexar
@@ -1616,15 +1693,78 @@ function sendMsg(text){
       typing.remove(); bubble('err','Erro: '+e.message); done(); say('Deu erro na conexão.');
     });
 }
+function normLabel(s){
+  return String(s||'').toLowerCase().trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')   // sem acento
+    .replace(/\.(pdf|docx|pptx|xlsx|csv|txt|md|html|svg|png)$/,'') // sem extensão
+    .replace(/[^a-z0-9]+/g,' ').trim();
+}
 function addNode(n){
   if(!n||!n.id) return false;
   var id=String(n.id).trim();
-  if(!id||graph.nodes.some(function(x){return x.id===id;})) return false;
+  if(!id) return false;
+
+  // já existe com o mesmo id
+  if(graph.nodes.some(function(x){return x.id===id;})) return false;
+
+  // já existe com o mesmo rótulo: atualiza o detalhe em vez de criar duplicado
+  var alvo=normLabel(n.label||id);
+  var igual=null;
+  for(var i=0;i<graph.nodes.length;i++){
+    if(normLabel(graph.nodes[i].label)===alvo){ igual=graph.nodes[i]; break; }
+  }
+  if(igual){
+    if(n.detail) igual.detail=n.detail;
+    (n.connectTo||[]).forEach(function(t){
+      if(t===igual.id) return;
+      if(!graph.nodes.some(function(x){return x.id===t;})) return;
+      var dup=graph.edges.some(function(e){return (e[0]===t&&e[1]===igual.id)||(e[0]===igual.id&&e[1]===t);});
+      if(!dup) graph.edges.push([t,igual.id]);
+    });
+    log('nó "'+igual.label+'" já existia — atualizado em vez de duplicado');
+    rebuild(); return false;
+  }
+
   graph.nodes.push({id:id,label:n.label||id,cluster:CLUSTERS[n.cluster]?n.cluster:'novo',detail:n.detail||''});
   var links=(n.connectTo||[]).filter(function(t){return t!==id&&graph.nodes.some(function(x){return x.id===t;});});
   if(links.length) links.forEach(function(t){graph.edges.push([t,id]);});
   else graph.edges.push(['core',id]);
   rebuild(); return true;
+}
+
+/* funde nós já duplicados que existem no grafo salvo */
+function limparDuplicados(silencioso){
+  var vistos={}, remover=[], fundidos=0;
+  graph.nodes.forEach(function(n){
+    var k=normLabel(n.label);
+    if(!k) return;
+    if(vistos[k]){
+      var mestre=vistos[k];
+      if(n.detail && n.detail.length>(mestre.detail||'').length) mestre.detail=n.detail;
+      graph.edges.forEach(function(e){
+        if(e[0]===n.id) e[0]=mestre.id;
+        if(e[1]===n.id) e[1]=mestre.id;
+      });
+      remover.push(n.id); fundidos++;
+    } else vistos[k]=n;
+  });
+  if(fundidos){
+    graph.nodes=graph.nodes.filter(function(n){ return remover.indexOf(n.id)===-1; });
+    var chaves={};
+    graph.edges=graph.edges.filter(function(e){
+      if(e[0]===e[1]) return false;
+      var k=[e[0],e[1]].sort().join('|');
+      if(chaves[k]) return false;
+      chaves[k]=1; return true;
+    });
+    rebuild(); save();
+  }
+  if(!silencioso){
+    var msg = fundidos ? ('🧹 '+fundidos+' nó(s) duplicado(s) fundido(s).') : 'Nenhum nó duplicado encontrado.';
+    bubble('sys', msg); showCap(msg);
+  }
+  log('dedupe: '+fundidos+' fundidos');
+  return fundidos;
 }
 
 /* ═════ PAINÉIS ═════ */
@@ -1659,6 +1799,7 @@ window.addEventListener('DOMContentLoaded',function(){
   window.addEventListener('pointerup',function(){ if(dragN&&!moved) openSheet(dragN); dragN=null; });
 
   loadState(); rebuild(); requestAnimationFrame(draw);
+  try{ limparDuplicados(true); }catch(e){ log('✖ dedupe boot: '+e.message); }
   setTimeout(function(){ try{ briefingAutomatico(false); }catch(e){ log('✖ briefing boot: '+e.message); } }, 2500);
   if(window.speechSynthesis){ speechSynthesis.onvoiceschanged=loadVoices; loadVoices(); }
   log('protocolo: '+location.protocol+' · '+(SR?'SpeechRecognition OK':'SEM SpeechRecognition'));
@@ -1712,9 +1853,14 @@ window.addEventListener('DOMContentLoaded',function(){
   $('swAuto').addEventListener('click',function(){cfg.auto=!cfg.auto;setSw('swAuto',cfg.auto);save();});
   $('swLabels').addEventListener('click',function(){cfg.labels=!cfg.labels;setSw('swLabels',cfg.labels);save();});
   $('btnSaveCfg').addEventListener('click',function(){
+    var c1=$('cfgChave').value.trim(), c2=$('cfgChaveCritica').value.trim();
+    if(c1 && c2 && c1===c2){
+      showCap('⚠ As duas chaves estão iguais — isso anula a separação de permissões.');
+      log('⚠ chave diária e crítica são idênticas');
+    }
     cfg.friday=$('cfgFriday').value.trim(); cfg.gmail=$('cfgGmail').value.trim();
     cfg.email=$('cfgEmail').value.trim(); cfg.chave=$('cfgChave').value.trim();
-    cfg.calendar=$('cfgCalendar').value.trim(); cfg.backup=$('cfgBackup').value.trim(); cfg.hub=$('cfgHub').value.trim(); save();
+    cfg.calendar=$('cfgCalendar').value.trim(); cfg.backup=$('cfgBackup').value.trim(); cfg.hub=$('cfgHub').value.trim(); cfg.chaveCritica=$('cfgChaveCritica').value.trim(); save();
     log('config salva'); closeP('settings'); say('Configuração salva.');
   });
   $('btnTestMic').addEventListener('click',function(){
@@ -1762,6 +1908,7 @@ window.addEventListener('DOMContentLoaded',function(){
   });
   $('btnRestore').addEventListener('click', restaurarBackup);
   $('btnBackupNow').addEventListener('click', function(){ fazerBackup(false); });
+  $('btnDedupe').addEventListener('click', function(){ limparDuplicados(false); });
   document.addEventListener('visibilitychange',function(){
     if(document.hidden){ stopRec(); if(window.speechSynthesis) speechSynthesis.cancel(); speaking=false; orb.classList.remove('speaking'); }
   });
