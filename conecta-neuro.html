@@ -1,136 +1,153 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conecta Neuro</title>
-
-    <!-- INÍCIO DAS TAGS PARA O WHATSAPP -->
-    <meta property="og:title" content="Conecta Neuro 🧠" />
-    <meta property="og:description" content="Clique aqui para acessar a plataforma Conecta Neuro." />
-    <meta property="og:image" content="https://raw.githubusercontent.com/fabiostefano/claude-voz/main/icone-neuro.png" />
-    <meta property="og:url" content="https://fabiostefano.github.io/claude-voz/conecta-neuro.html" />
-    <meta property="og:type" content="website" />
-    <!-- FIM DAS TAGS PARA O WHATSAPP -->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Conecta Neuro — São Luís</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&display=swap" rel="stylesheet">
+
+
+<style type="text/css">@font-face {font-family:'Atkinson Hyperlegible';font-style:normal;font-weight:400;src:url(/cf-fonts/s/atkinson-hyperlegible/5.2.8/latin/400/normal.woff2);unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;font-display:swap;}@font-face {font-family:'Atkinson Hyperlegible';font-style:normal;font-weight:400;src:url(/cf-fonts/s/atkinson-hyperlegible/5.2.8/latin-ext/400/normal.woff2);unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;font-display:swap;}@font-face {font-family:'Atkinson Hyperlegible';font-style:normal;font-weight:700;src:url(/cf-fonts/s/atkinson-hyperlegible/5.2.8/latin/700/normal.woff2);unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;font-display:swap;}@font-face {font-family:'Atkinson Hyperlegible';font-style:normal;font-weight:700;src:url(/cf-fonts/s/atkinson-hyperlegible/5.2.8/latin-ext/700/normal.woff2);unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;font-display:swap;}@font-face {font-family:'Atkinson Hyperlegible';font-style:italic;font-weight:400;src:url(/cf-fonts/s/atkinson-hyperlegible/5.2.8/latin-ext/400/italic.woff2);unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;font-display:swap;}@font-face {font-family:'Atkinson Hyperlegible';font-style:italic;font-weight:400;src:url(/cf-fonts/s/atkinson-hyperlegible/5.2.8/latin/400/italic.woff2);unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;font-display:swap;}@font-face {font-family:'Bricolage Grotesque';font-style:normal;font-weight:500;src:url(/cf-fonts/v/bricolage-grotesque/5.2.10/latin-ext/opsz/normal.woff2);unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;font-display:swap;}@font-face {font-family:'Bricolage Grotesque';font-style:normal;font-weight:500;src:url(/cf-fonts/v/bricolage-grotesque/5.2.10/latin/opsz/normal.woff2);unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;font-display:swap;}@font-face {font-family:'Bricolage Grotesque';font-style:normal;font-weight:500;src:url(/cf-fonts/v/bricolage-grotesque/5.2.10/vietnamese/opsz/normal.woff2);unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;font-display:swap;}@font-face {font-family:'Bricolage Grotesque';font-style:normal;font-weight:700;src:url(/cf-fonts/v/bricolage-grotesque/5.2.10/latin/opsz/normal.woff2);unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;font-display:swap;}@font-face {font-family:'Bricolage Grotesque';font-style:normal;font-weight:700;src:url(/cf-fonts/v/bricolage-grotesque/5.2.10/latin-ext/opsz/normal.woff2);unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;font-display:swap;}@font-face {font-family:'Bricolage Grotesque';font-style:normal;font-weight:700;src:url(/cf-fonts/v/bricolage-grotesque/5.2.10/vietnamese/opsz/normal.woff2);unicode-range:U+0102-0103,U+0110-0111,U+0128-0129,U+0168-0169,U+01A0-01A1,U+01AF-01B0,U+0300-0301,U+0303-0304,U+0308-0309,U+0323,U+0329,U+1EA0-1EF9,U+20AB;font-display:swap;}</style>
 <style>
 :root{
-  --paper:#F7F8F6; --card:#FFFFFF; --ink:#1F2A2E; --muted:#5E6E69;
-  --line:#DCE3DF; --deep:#2F6B5E;
-  --calmo:#6B8F71; --moderado:#C08A2E; --intenso:#A85D4A;
-  --r:14px;
+  --bg:#F6FAFD;
+  --bg-soft:#EDF7FB;
+  --card:#FFFFFF;
+  --card-soft:#F8FCFF;
+  --ink:#1F2937;
+  --muted:#5F6C7B;
+  --line:#D6E4EE;
+  --primary:#2F6FED;
+  --primary-dark:#1F4FBF;
+  --secondary:#63C7B2;
+  --accent:#F4D35E;
+  --support:#A78BFA;
+  --success:#2F9E44;
+  --warning:#C98B00;
+  --danger:#C05621;
+  --calmo:#52B788;
+  --moderado:#E9B949;
+  --intenso:#D97757;
+  --shadow-sm:0 6px 18px rgba(31, 41, 55, 0.06);
+  --shadow-md:0 14px 40px rgba(31, 41, 55, 0.10);
+  --r-xs:10px;
+  --r-sm:14px;
+  --r-md:20px;
+  --r-lg:28px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.6}
-.wrap{max-width:720px;margin:0 auto;padding:20px 16px 64px}
-
-header{padding:16px 0 8px}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;color:var(--ink);
+  font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.65;
+  background:
+    radial-gradient(circle at top left, rgba(99,199,178,.16), transparent 28%),
+    radial-gradient(circle at top right, rgba(167,139,250,.12), transparent 24%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%)}
+.wrap{max-width:860px;margin:0 auto;padding:28px 18px 80px}
+header{padding:18px 0 10px;margin-bottom:18px}
 .marca{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;
-  font-size:32px;line-height:1.1;letter-spacing:-0.02em;margin:0}
-.marca span{color:var(--deep)}
-.sub{margin:8px 0 0;color:var(--muted);font-size:17px}
-.aviso{margin:16px 0 0;padding:12px 14px;border:2px solid var(--line);
-  border-radius:var(--r);background:#fff;font-size:15px;color:var(--muted)}
+  font-size:clamp(34px, 6vw, 52px);line-height:1.02;letter-spacing:-0.03em;margin:0;color:var(--ink)}
+.marca span{color:var(--primary)}
+.sub{margin:14px 0 0;max-width:720px;color:var(--muted);font-size:18px}
+.aviso{margin:20px 0 0;padding:16px 18px;border:1.5px solid #DCE8F3;
+  border-radius:var(--r-md);background:rgba(255,255,255,.92);box-shadow:var(--shadow-sm);font-size:15px;color:var(--muted)}
 .aviso b{color:var(--ink)}
-
-.busca{margin:24px 0 0}
-label.campo{display:block;font-weight:700;margin-bottom:8px;font-size:17px}
-textarea{width:100%;min-height:96px;padding:14px;border:2px solid var(--line);
-  border-radius:var(--r);font:inherit;font-size:18px;background:var(--card);color:var(--ink);resize:vertical}
-textarea:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{
-  outline:3px solid var(--deep);outline-offset:2px}
-.exemplos{margin:10px 0 0;font-size:15px;color:var(--muted)}
-.btn{display:block;width:100%;margin-top:12px;padding:16px;min-height:56px;border:none;
-  border-radius:var(--r);background:var(--deep);color:#fff;
-  font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:19px;cursor:pointer}
-.btn:active{background:#25574C}
-.btn[disabled]{background:var(--muted);cursor:default}
-.btn-2{background:transparent;color:var(--deep);border:2px solid var(--line)}
-
-.filtros{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}
-.chip{padding:10px 14px;min-height:44px;border:2px solid var(--line);border-radius:999px;
-  background:var(--card);color:var(--ink);font:inherit;font-size:15px;cursor:pointer}
-.chip[aria-pressed="true"]{background:var(--deep);color:#fff;border-color:var(--deep)}
-
+.busca{margin:22px 0 0;padding:24px;border:1px solid #DBE8F2;border-radius:var(--r-lg);
+  background:linear-gradient(180deg, rgba(255,255,255,.96) 0%, rgba(248,252,255,.96) 100%);
+  box-shadow:var(--shadow-md);backdrop-filter:blur(4px)}
+label.campo{display:block;font-weight:700;margin-bottom:10px;font-size:18px;color:var(--ink)}
+textarea,input[type=text]{width:100%;border:2px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);font:inherit;
+  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease}
+textarea{min-height:110px;padding:16px 18px;font-size:18px;resize:vertical}
+input[type=text]{padding:14px 16px;margin-top:10px;font-size:17px}
+textarea::placeholder,input[type=text]::placeholder{color:#7B8794}
+textarea:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible,a:focus-visible{
+  outline:none;border-color:var(--primary);box-shadow:0 0 0 4px rgba(47,111,237,.18)}
+.exemplos{margin:12px 0 0;font-size:15px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;width:100%;margin-top:14px;padding:16px 20px;min-height:58px;border:none;
+  border-radius:18px;background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);color:#fff;
+  font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:18px;letter-spacing:.01em;cursor:pointer;
+  box-shadow:0 12px 24px rgba(47,111,237,.18)}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0);filter:brightness(.98)}
+.btn[disabled]{background:#94A3B8;box-shadow:none;cursor:default}
+.btn-2{background:#fff;color:var(--primary-dark);border:2px solid #D6E4EE;box-shadow:none}
+.filtros{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 0}
+.chip{padding:11px 16px;min-height:46px;border:1.5px solid #D5E3ED;border-radius:999px;
+  background:#fff;color:var(--ink);font:inherit;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(31,41,55,.04)}
+.chip:hover{border-color:#B8D0E2;background:#F8FBFF}
+.chip[aria-pressed="true"]{background:linear-gradient(135deg, var(--secondary) 0%, #3CB7AF 100%);color:#083A38;border-color:transparent;box-shadow:0 10px 20px rgba(99,199,178,.22)}
 .status{margin:24px 0 0;font-size:16px;color:var(--muted)}
-.explica{margin:16px 0 0;padding:14px;border-left:5px solid var(--deep);
-  background:#EEF2F0;border-radius:0 var(--r) var(--r) 0;font-size:16px}
-.card{margin:16px 0 0;background:var(--card);border:2px solid var(--line);
-  border-radius:var(--r);overflow:hidden}
-.card h2{font-family:'Bricolage Grotesque',sans-serif;font-size:21px;margin:0 0 4px;line-height:1.25}
-.topo{padding:18px 16px 14px}
+.explica{margin:16px 0 0;padding:16px 18px;border-left:6px solid var(--secondary);
+  background:#ECFBF7;border-radius:0 16px 16px 0;font-size:16px;color:#22443E}
+.card{margin:18px 0 0;background:linear-gradient(180deg, #FFFFFF 0%, #FCFEFF 100%);border:1px solid #D9E7F1;
+  border-radius:24px;overflow:hidden;box-shadow:var(--shadow-sm)}
+.card h2{font-family:'Bricolage Grotesque',sans-serif;font-size:23px;margin:0 0 6px;line-height:1.22;letter-spacing:-0.02em;color:var(--ink)}
+.topo{padding:22px 20px 18px}
 .meta{font-size:15px;color:var(--muted);margin:0}
-.selo{display:inline-block;margin-top:10px;font-size:14px;font-weight:700;
-  padding:5px 10px;border-radius:8px;background:#EEF2F0;color:var(--deep)}
-.selo.priv{background:#F5F0E6;color:#8A6516}
-
-.linhas{margin:14px 0 0;font-size:16px}
-.linhas div{margin-bottom:4px}
-.linhas b{font-weight:700}
-
-.sensorial{display:flex;gap:14px;margin:14px 0 0;flex-wrap:wrap}
-.medida{min-width:96px}
-.medida .rot{font-size:13px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-.barras{display:flex;gap:3px;margin:5px 0 3px}
-.barras i{display:block;width:22px;height:9px;border-radius:2px;background:var(--line)}
+.selo{display:inline-block;margin-top:14px;font-size:14px;font-weight:700;
+  padding:7px 12px;border-radius:999px;background:#E7F8EF;color:var(--success)}
+.selo.priv{background:#FFF6E8;color:#A56600}
+.linhas{margin:16px 0 0;display:grid;gap:7px;font-size:16px}
+.linhas div{padding:10px 12px;border-radius:14px;background:#F8FBFD}
+.linhas b{font-weight:700;color:var(--ink)}
+.sensorial{display:flex;gap:16px;margin:18px 0 0;flex-wrap:wrap;padding:14px;border-radius:18px;background:#F6FBFA;border:1px solid #DDEEEA}
+.medida{min-width:100px}
+.medida .rot{font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.barras{display:flex;gap:4px;margin:6px 0 4px}
+.barras i{display:block;width:24px;height:10px;border-radius:999px;background:#D7E2E8}
 .medida .val{font-size:15px;font-weight:700}
 .n1 i.on{background:var(--calmo)} .n1 .val{color:var(--calmo)}
 .n2 i.on{background:var(--moderado)} .n2 .val{color:var(--moderado)}
 .n3 i.on{background:var(--intenso)} .n3 .val{color:var(--intenso)}
-.semdado{margin:14px 0 0;padding:12px 14px;border:2px dashed var(--line);
-  border-radius:var(--r);font-size:15px;color:var(--muted)}
-
-.tags{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 0}
-.tag{font-size:14px;padding:5px 10px;border-radius:8px;background:#EEF2F0;color:var(--deep)}
-
-details{border-top:2px solid var(--line)}
-summary{padding:16px;min-height:56px;cursor:pointer;font-weight:700;color:var(--deep);
+.semdado{margin:16px 0 0;padding:14px 16px;border:1.5px dashed #C9D8E3;
+  border-radius:18px;font-size:15px;color:var(--muted);background:#FBFDFF}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+.tag{font-size:13px;padding:7px 11px;border-radius:999px;background:#EEF6FF;color:var(--primary-dark);font-weight:700}
+details{border-top:1px solid #E1EBF2;background:linear-gradient(180deg, #FFFFFF 0%, #FAFCFE 100%)}
+summary{padding:18px 20px;min-height:58px;cursor:pointer;font-weight:700;color:var(--primary-dark);
   list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
 summary::-webkit-details-marker{display:none}
 summary::after{content:"abrir";font-weight:400;font-size:15px;color:var(--muted)}
 details[open] summary::after{content:"fechar"}
-.detalhe{padding:0 16px 20px}
-.bloco{margin:18px 0 0}
-.bloco h3{font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
-  margin:0 0 8px;font-weight:700}
-.bloco ol{margin:0;padding-left:22px}
-.bloco li{margin-bottom:6px}
+.detalhe{padding:0 20px 22px}
+.bloco{margin:18px 0 0;padding:16px;border-radius:18px;background:#F8FBFD}
+.bloco h3{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+  margin:0 0 10px;font-weight:700}
+.bloco ol{margin:0;padding-left:20px}
+.bloco li{margin-bottom:7px}
 .bloco p{margin:0}
 .fonte{margin:18px 0 0;font-size:14px;color:var(--muted)}
-.fonte a{color:var(--deep)}
-
-.rodape{margin:40px 0 0;padding:20px 16px;border:2px dashed var(--line);border-radius:var(--r)}
-.rodape h2{font-family:'Bricolage Grotesque',sans-serif;font-size:20px;margin:0 0 8px}
-input[type=text]{width:100%;padding:14px;margin-top:8px;border:2px solid var(--line);
-  border-radius:var(--r);font:inherit;font-size:17px}
+.fonte a{color:var(--primary-dark);font-weight:700}
+.rodape{margin:42px 0 0;padding:24px 20px;border:1.5px solid #D8E7EF;border-radius:28px;
+  background:linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(240,251,247,.98) 100%);box-shadow:var(--shadow-md)}
+.rodape h2{font-family:'Bricolage Grotesque',sans-serif;font-size:24px;line-height:1.2;margin:0 0 10px}
 .creditos{margin:32px 0 0;font-size:14px;color:var(--muted);text-align:center}
-
 .oculto{display:none}
-.barra-topo{display:flex;gap:10px;margin:16px 0 0}
+.barra-topo{display:flex;gap:12px;margin:22px 0 0}
 .barra-topo .btn{margin-top:0}
-.aviso-busca{margin:16px 0 0;padding:12px 14px;border:2px solid var(--moderado);
-  border-radius:var(--r);background:#FBF6EC;font-size:15px}
-.aviso-busca b{color:#8A6516}
-.vaga{margin:16px 0 0;padding:16px;border:2px dashed var(--line);border-radius:var(--r);
-  font-size:15px;color:var(--muted)}
-.vaga code{background:#EEF2F0;padding:2px 6px;border-radius:6px;color:var(--deep);font-size:14px}
-.link-video{display:block;margin:12px 0 0;padding:16px;min-height:56px;
-  background:var(--card);border:2px solid var(--line);border-radius:var(--r);
-  color:var(--ink);text-decoration:none}
-.link-video:active{background:#EEF2F0}
+.aviso-busca{margin:16px 0 0;padding:14px 16px;border:1.5px solid #F2D48A;
+  border-radius:18px;background:#FFF9E9;font-size:15px;color:#6B5200}
+.aviso-busca b{color:#7A5B00}
+.vaga{margin:16px 0 0;padding:16px;border:1.5px dashed #C9D8E3;border-radius:18px;
+  font-size:15px;color:var(--muted);background:#FCFEFF}
+.vaga code{background:#EEF6FF;padding:3px 7px;border-radius:8px;color:var(--primary-dark);font-size:14px}
+.link-video{display:block;margin:14px 0 0;padding:18px;min-height:56px;
+  background:#fff;border:1.5px solid #D9E7F1;border-radius:20px;
+  color:var(--ink);text-decoration:none;box-shadow:var(--shadow-sm)}
+.link-video:hover{background:#F9FCFF;border-color:#C4D8E8}
 .link-video strong{display:block;font-family:'Bricolage Grotesque',sans-serif;
-  font-size:19px;color:var(--deep);margin-bottom:4px}
+  font-size:20px;color:var(--primary-dark);margin-bottom:5px}
 .link-video span{font-size:15px;color:var(--muted)}
-
-@media (prefers-reduced-motion:no-preference){.btn,.chip,.link-video{transition:background .12s linear}}
+.hero-atalhos{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.hero-atalho{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.8);border:1px solid #D9E7F1;color:var(--primary-dark);font-weight:700;font-size:14px;box-shadow:var(--shadow-sm)}
+@media (max-width:640px){
+  .wrap{padding:20px 14px 72px}
+  .busca,.rodape{padding:20px 16px;border-radius:22px}
+  .topo,.detalhe,summary{padding-left:16px;padding-right:16px}
+  .card h2{font-size:21px}
+  .barra-topo{flex-direction:column}
+}
+@media (prefers-reduced-motion:no-preference){.btn,.chip,.link-video,.card{transition:transform .14s ease, background .14s ease, border-color .14s ease, box-shadow .14s ease}}
 </style>
 </head>
 <body>
@@ -138,7 +155,13 @@ input[type=text]{width:100%;padding:14px;margin-top:8px;border:2px solid var(--l
 
 <header>
   <h1 class="marca">Conecta <span>Neuro</span></h1>
-  <p class="sub">Serviços para pessoas autistas em São Luís, com o que esperar antes de ir.</p>
+  <p class="sub">Encontre serviços, terapias, direitos e apoio com mais clareza, previsibilidade e acolhimento.</p>
+  <div class="hero-atalhos">
+    <span class="hero-atalho">Terapias</span>
+    <span class="hero-atalho">Atende adultos</span>
+    <span class="hero-atalho">Direitos e documentos</span>
+    <span class="hero-atalho">Atendimento em casa</span>
+  </div>
   <p class="aviso"><b>Dados coletados de fontes públicas em agosto de 2026.</b> Endereços, horários e regras de acesso mudam. Confirme por telefone antes de sair de casa. Cada registro traz o link da fonte.</p>
 </header>
 
@@ -147,7 +170,7 @@ input[type=text]{width:100%;padding:14px;margin-top:8px;border:2px solid var(--l
 </div>
 
 <main class="busca" id="tela-busca">
-  <label class="campo" for="q">O que você precisa?</label>
+  <label class="campo" for="q">O que você gostaria de encontrar hoje?</label>
   <textarea id="q" placeholder="Escreva com suas palavras."></textarea>
   <p class="exemplos">Exemplos: “atendimento para adulto autista pelo SUS”, “onde tirar a carteira do autista”, “esporte adaptado”, “terapia em casa”.</p>
   <button class="btn" id="buscar">Buscar</button>
@@ -181,7 +204,7 @@ input[type=text]{width:100%;padding:14px;margin-top:8px;border:2px solid var(--l
 
 <section class="rodape" id="tela-rodape">
   <h2>Já foi a algum desses lugares?</h2>
-  <p class="meta">O que falta no app é a informação sensorial: barulho, luz e tempo de espera. Isso só quem foi sabe. Escreva e o texto fica pronto para você enviar.</p>
+  <p class="meta">As informações sensoriais fazem diferença de verdade. Se você já esteve em algum lugar, descreva como foi o barulho, a luz, a espera e o acolhimento.</p>
   <input type="text" id="indNome" placeholder="Qual lugar?">
   <input type="text" id="indComo" placeholder="Como era o barulho, a luz e a espera?">
   <button class="btn btn-2" id="gerar">Gerar texto do relato</button>
@@ -190,358 +213,5 @@ input[type=text]{width:100%;padding:14px;margin-top:8px;border:2px solid var(--l
 
 <p class="creditos">Conecta Neuro — protótipo acadêmico. Sem cadastro, sem coleta de dados.</p>
 </div>
-
-<script>
-/* ==========================================================
-   1) DADOS — coletados de fontes públicas em agosto de 2026.
-   sensorial: 1 calmo, 2 moderado, 3 intenso. null = não informado.
-   ========================================================== */
-const DADOS = [
-{id:1,nome:"Centro TEA 12+",cat:"Saúde",bairro:"Cohab Anil I",tipo:"Serviço público estadual",
- endereco:"Rua Treze, Cohab Anil I",telefone:"Acesso pelo Viva/Procon",
- publico:"12 anos ou mais, com laudo de TEA",custo:"Gratuito (SUS)",horario:"Segunda a sexta, 7h às 19h",
- adulto:true,gratis:true,
- tags:["adolescente e adulto","neurologia","psiquiatria","psicologia","terapia ocupacional","fonoaudiologia","fisioterapia","musicoterapia","arteterapia","eletroencefalograma"],
- acesso:["Acesso regulado: é preciso ter laudo com diagnóstico de TEA","O paciente ou responsável envia a documentação pelo Viva/Procon","Depois da análise, a pessoa é convocada para comparecer à unidade","Na unidade abre-se o prontuário e agendam-se as primeiras consultas","O início costuma ser por psiquiatria, neurologia e avaliação multiprofissional"],
- barulho:null,luz:null,espera:null,
- obs:"Única unidade do SUS no Maranhão só para maiores de 12 anos, e a primeira do tipo no Nordeste. Se você é adulto autista, comece por aqui.",
- fonte:"Emserh",url:"https://www.emserh.ma.gov.br/centro-tea-12-registra-mais-de-160-mil-atendimentos/"},
-
-{id:2,nome:"Espaço TEA — Hospital da Criança Dr. Odorico Mattos",cat:"Saúde",bairro:"Alemanha",tipo:"Serviço público municipal",
- endereco:"Hospital da Criança Dr. Odorico Mattos, bairro Alemanha",telefone:"Confirmar com a Semus",
- publico:"Crianças de 3 a 11 anos com diagnóstico de TEA",custo:"Gratuito",horario:"Confirmar",
- adulto:false,gratis:true,
- tags:["jardim sensorial","ginásio terapêutico","supervisor ABA","psiquiatra infantil","neuropediatra","terapia ocupacional","fonoaudiologia","apoio às mães"],
- acesso:["Entregue em abril de 2025 pela Prefeitura de São Luís","Na inauguração, a forma de acesso ainda seria anunciada — confirme se já foi divulgada","Equipe com coordenador técnico, supervisor ABA, psiquiatra infantil ou neuropediatra, psicólogo, TO, fono, psicopedagogo, neuropsicólogo e outros"],
- barulho:null,luz:null,espera:null,
- obs:"Tem ginásio terapêutico com tatame, piscina de bolinhas, cama elástica e estrutura de integração sensorial, além de jardim sensorial ao ar livre. O programa Laços que Acolhem acompanha as mães.",
- fonte:"Prefeitura de São Luís",url:"https://www.saoluis.ma.gov.br/portal/noticias/0/3/3284/prefeito-eduardo-braide-entrega-espaco-tea-no-hospital-da-crianca-com-foco-em-acolhimento-humanizado-para-criancas-autistas/"},
-
-{id:3,nome:"CER Olho d\u0027Água — Serviço especializado em TEA",cat:"Saúde",bairro:"Olho d\u0027Água",tipo:"Serviço público estadual",
- endereco:"Alameda Mearim, Olho d\u0027Água",telefone:"Confirmar com a SES-MA",
- publico:"Crianças de 1 ano e meio a 12 anos, já diagnosticadas",custo:"Gratuito (SUS)",horario:"Confirmar",
- adulto:false,gratis:true,
- tags:["infantil","ABA","intervenção precoce","modalidade intensiva","terapia ocupacional","fonoaudiologia"],
- acesso:["Serviço para crianças já diagnosticadas","As modalidades são separadas por idade e nível de desenvolvimento","Há modalidade intensiva, com atendimento em vários dias da semana"],
- barulho:null,luz:null,espera:null,
- obs:"O anexo tem cozinha e quarto montados para treinar habilidades da rotina de casa em contexto real. Em 2017 o Maranhão foi o primeiro estado a ofertar ABA pelo SUS.",
- fonte:"Emserh",url:"https://www.emserh.ma.gov.br/governo-expande-servicos-a-pessoas-com-autismo/"},
-
-{id:4,nome:"CER Cidade Operária",cat:"Saúde",bairro:"Cidade Operária",tipo:"Serviço público estadual",
- endereco:"Avenida Este 203",telefone:"Confirmar com a SES-MA",
- publico:"Crianças até 12 anos",custo:"Gratuito (SUS)",horario:"Confirmar",
- adulto:false,gratis:true,
- tags:["infantil","neuropediatria","ortopedia","otorrinolaringologia","fisioterapia","fonoaudiologia"],
- acesso:["Unidade de reabilitação que atende também pessoas com TEA","Não é exclusiva para autismo — atende outros públicos no mesmo espaço"],
- barulho:null,luz:null,espera:null,
- obs:"Por não ser exclusiva para TEA, a sala de espera é compartilhada. Pergunte como funciona a chamada por senha.",
- fonte:"Imirante",url:"https://imirante.com/noticias/sao-luis/2024/04/14/abril-azul-saiba-quais-unidades-de-saude-publica-do-ma-atendem-pessoas-com-tea"},
-
-{id:5,nome:"Shopping da Criança São Luís",cat:"Saúde",bairro:"Beira-Mar",tipo:"Serviço público estadual",
- endereco:"Avenida Beira-Mar",telefone:"Disque Saúde ou app do Procon Maranhão",
- publico:"Crianças até 12 anos",custo:"Gratuito (SUS)",horario:"Terça a sábado, 7h às 19h",
- adulto:false,gratis:true,
- tags:["infantil","neuropediatria","psiquiatria infantil","neuropsicólogo","nutricionista","laboratório","eletroencefalograma"],
- acesso:["Agendamento pelo Disque Saúde","Também é possível agendar pelo aplicativo do Procon Maranhão"],
- barulho:null,luz:null,espera:null,
- obs:"Reúne muitas especialidades no mesmo endereço, o que reduz o número de deslocamentos.",
- fonte:"O Imparcial",url:"https://oimparcial.com.br/checamos/2024/04/seis-unidades-de-saude-oferecem-atendimento-especializado-para-pessoas-com-tea/"},
-
-{id:6,nome:"Casa de Apoio Ninar",cat:"Saúde",bairro:"Confirmar",tipo:"Serviço público estadual",
- endereco:"Endereço não encontrado nas fontes públicas",telefone:"Confirmar com a SES-MA",
- publico:"Crianças até 12 anos",custo:"Gratuito (SUS)",horario:"Confirmar",
- adulto:false,gratis:true,
- tags:["infantil","apoio à família"],
- acesso:["Citada entre as unidades da rede estadual que atendem crianças com TEA","Endereço e agendamento precisam ser confirmados na Secretaria de Saúde"],
- barulho:null,luz:null,espera:null,
- obs:"Registro deixado incompleto de propósito: as fontes citam a unidade mas não trazem endereço nem telefone.",
- fonte:"Imirante",url:"https://imirante.com/noticias/sao-luis/2024/04/14/abril-azul-saiba-quais-unidades-de-saude-publica-do-ma-atendem-pessoas-com-tea"},
-
-{id:7,nome:"CIPTEA — Carteira de Identificação da Pessoa com TEA",cat:"Documento",bairro:"Jaracati",tipo:"Documento",
- endereco:"Viva/Procon do São Luís Shopping, Jaracati — ou pelo aplicativo",telefone:"App Viva/Procon (Android e iOS)",
- publico:"Qualquer pessoa com diagnóstico de TEA",custo:"Gratuito",horario:"Horário da unidade Viva/Procon",
- adulto:true,gratis:true,
- tags:["documento digital","prioridade no atendimento","gratuito","direitos","primeiro passo"],
- acesso:["Pode ser solicitada presencialmente no Viva/Procon do São Luís Shopping","Ou digitalmente pelo aplicativo Viva/Procon","É expedida pelo Viva/Procon junto com a ATI/MA","Garante prioridade de atendimento em serviços públicos e privados"],
- barulho:null,luz:null,espera:null,
- obs:"É o documento que destrava prioridade em fila e atendimento. Também é exigido para acessar alguns serviços da lista.",
- fonte:"O Informante",url:"https://portaloinformante.com.br/noticias/2024/08/saiba-como-emitir-o-cartao-de-identificacao-da-pessoa-com-espectro-autista-no-maranhao/"},
-
-{id:8,nome:"Centro de Equoterapia da Polícia Militar do Maranhão",cat:"Esporte",bairro:"Calhau",tipo:"Serviço público estadual",
- endereco:"Avenida Jerônimo de Albuquerque, Sítio do Rangedor, Quartel do Comando Geral da PMMA",
- telefone:"Confirmar com a Associação Maranhense de Equoterapia",
- publico:"A partir de 3 anos, com deficiência física, cognitiva, TEA ou Síndrome de Down",custo:"Gratuito",horario:"Confirmar",
- adulto:true,gratis:true,
- tags:["equoterapia","cavalo","ao ar livre","dançaterapia","atende adulto","gratuito"],
- acesso:["Funciona dentro do Quartel do Comando Geral da PMMA","Parceria com a Associação Maranhense de Equoterapia e equipe voluntária","Atende crianças, jovens e adultos de todo o estado"],
- barulho:null,luz:null,espera:null,
- obs:"Criado em 2005. Atende cerca de 100 pessoas, a maioria crianças e adolescentes. É atividade ao ar livre, com animal de grande porte — vale uma visita prévia sem montar.",
- fonte:"Assembleia Legislativa do Maranhão",url:"https://www.al.ma.leg.br/sitealema/saude-e-bem-estar-aborda-beneficios-da-equoterapia/"},
-
-{id:9,nome:"APAE São Luís",cat:"Saúde",bairro:"Outeiro da Cruz",tipo:"Entidade filantrópica",
- endereco:"Avenida Granja Barreto, 1, Outeiro da Cruz",telefone:"(98) 3216-4200",
- publico:"Crianças, jovens e adultos com deficiência intelectual e múltipla",custo:"Gratuito (SUS) e também particular",horario:"Confirmar por telefone",
- adulto:true,gratis:true,
- tags:["fisioterapia","terapia ocupacional","fonoaudiologia","psicologia","serviço social","clínica-escola","projeto TEAtivo"],
- acesso:["A reabilitação, exceto Fisioterapia, é acessada por procura direta na recepção do setor","Leve encaminhamento, documento pessoal e cartão do SUS","Os demais setores são acessados pela CEMARC, central de marcação da Secretaria Municipal de Saúde","A CEMARC do bairro Alemanha atende exclusivamente idosos, gestantes e pessoas com deficiência","Depois da triagem abre-se o prontuário e a pessoa é avaliada com a família"],
- barulho:null,luz:null,espera:null,
- obs:"Abriga o Projeto TEAtivo, com natação, futebol, capoeira e atletismo adaptados para pessoas com TEA — e não exige vínculo prévio com a Rede APAE.",
- fonte:"APAE São Luís",url:"https://www.apaesaoluis.org.br/faq"},
-
-{id:10,nome:"Projeto TEAtivo — esporte adaptado na APAE",cat:"Esporte",bairro:"Outeiro da Cruz",tipo:"Projeto",
- endereco:"APAE São Luís — Avenida Granja Barreto, 1",telefone:"(98) 3216-4200",
- publico:"Crianças, adolescentes e jovens com TEA",custo:"Gratuito",horario:"Confirmar por telefone",
- adulto:false,gratis:true,
- tags:["natação","futebol","capoeira","atletismo","educação física adaptada","sem vínculo prévio"],
- acesso:["Não exige vínculo prévio com a Rede APAE","Atividades conduzidas por profissionais de educação física capacitados","Parceria entre APAE Brasil e Ministério do Esporte, lançada em setembro de 2024"],
- barulho:null,luz:null,espera:null,
- obs:"Confirme se o projeto segue ativo — foi lançado em 2024 e projetos assim dependem de renovação de convênio.",
- fonte:"APAE São Luís",url:"https://www.apaesaoluis.org.br/single-post/projeto-teativo-para-crian%C3%A7as-e-adolescentes-inicia-na-apae-de-s%C3%A3o-lu%C3%ADs"},
-
-{id:11,nome:"CEEE Padre João Mohana — Educação Especial",cat:"Educação",bairro:"São Luís",tipo:"Serviço público estadual",
- endereco:"Consulte a Secretaria de Educação do Maranhão",telefone:"Confirmar com a Seduc-MA",
- publico:"Crianças e adolescentes com TEA e outros transtornos",custo:"Gratuito",horario:"Horário escolar",
- adulto:false,gratis:true,
- tags:["educação especial","inclusão escolar","contraturno","estimulação essencial"],
- acesso:["Centro estadual de educação especial, criado por decreto em 1996","O foco declarado é a inclusão escolar dos estudantes","Alguns serviços exigem que a criança esteja matriculada no ensino comum e frequente o contraturno"],
- barulho:null,luz:null,espera:null,
- obs:"Serviço de educação, não de saúde. Não substitui terapia nem emite laudo.",
- fonte:"Secretaria de Educação do Maranhão",url:"https://www.educacao.ma.gov.br/nucleos-de-educacao-especial/centro-de-ensino-de-educacao-especial-padre-joao-mohana-ceee-pe-joao-mohana/"},
-
-{id:12,nome:"AMA — Associação de Amigos do Autista do Maranhão",cat:"Apoio",bairro:"Renascença II",tipo:"Associação",
- endereco:"Rua das Andorinhas, Quadra 11, Casa 06, Renascença II",telefone:"Telefone divulgado em diretório de terceiros — confirme antes",
- publico:"Famílias e pessoas autistas",custo:"Confirmar",horario:"Confirmar",
- adulto:true,gratis:true,
- tags:["associação","apoio a famílias","rede de contato","troca de experiências"],
- acesso:["Endereço divulgado em diretório nacional de instituições de autismo","Dados podem estar desatualizados — confirme antes de ir"],
- barulho:null,luz:null,espera:null,
- obs:"Associações costumam ser a via mais rápida para saber o que está funcionando de verdade na cidade, porque a informação circula entre famílias.",
- fonte:"Autismo em Dia",url:"https://www.autismoemdia.com.br/parceiros.html"},
-
-{id:13,nome:"Clínica TAAL",cat:"Terapia",bairro:"São Luís",tipo:"Clínica particular",
- endereco:"Consulte o site da clínica",telefone:"Pelo site",
- publico:"Crianças e adolescentes",custo:"Particular",horario:"Confirmar",
- adulto:false,gratis:false,
- tags:["particular","ABA","intervenção precoce","avaliação","PEERS","habilidades sociais","Denver/ESDM"],
- acesso:["Clínica privada — o contato é direto com ela","As informações abaixo são declaradas pela própria clínica e não foram verificadas de forma independente"],
- barulho:null,luz:null,espera:null,
- obs:"A clínica declara ter diretora técnica com certificação BCBA e credenciamento para aplicar o programa PEERS de habilidades sociais para adolescentes.",
- fonte:"Site da Clínica TAAL",url:"https://clinicataal.com/"},
-
-{id:14,nome:"Clínica Escola Pupa",cat:"Terapia",bairro:"São Luís",tipo:"Clínica particular",
- endereco:"Consulte o site da clínica",telefone:"Pelo site",
- publico:"Crianças típicas e atípicas",custo:"Particular",horario:"Confirmar",
- adulto:false,gratis:false,
- tags:["particular","ABA naturalista","clínica e escola regular","multidisciplinar"],
- acesso:["Funciona como clínica multidisciplinar e também como escola regular","As informações são declaradas pela própria clínica e não foram verificadas de forma independente"],
- barulho:null,luz:null,espera:null,
- obs:"O modelo de clínica junto com escola regular pode reduzir deslocamentos, mas confirme como funciona a divisão entre terapia e aula.",
- fonte:"Site da Clínica Pupa",url:"https://www.clinicapupa.com.br/"},
-
-{id:15,nome:"São Luís Home Care",cat:"Domicílio",bairro:"Aracagy (São José de Ribamar)",tipo:"Empresa particular",
- endereco:"Travessa Bela Vista, 4, Aracagy, São José de Ribamar",telefone:"(98) 3236-1737",
- publico:"Qualquer pessoa que precise de atendimento em casa",custo:"Particular",horario:"Central de atendimento: segunda a sábado, 7h às 19h",
- adulto:true,gratis:false,
- tags:["atendimento em casa","fisioterapia","fonoaudiologia","terapia ocupacional","psicologia","nutrição","você escolhe os dias"],
- acesso:["Modalidade SAD: sessões de fisioterapia, fonoaudiologia, terapia ocupacional, psicologia e visitas de outros profissionais em casa","A família escolhe os profissionais, os dias e a frequência"],
- barulho:null,luz:null,espera:null,
- obs:"Empresa de home care geral, não especializada em autismo. Vale para quem tem dificuldade de deslocamento ou não tolera sala de espera — pergunte se a equipe tem experiência com TEA.",
- fonte:"São Luís Home Care",url:"http://www.saoluishomecare.com.br/sistema-de-atencao-domiciliar-home-care-sad/"}
-];
-
-/* ==========================================================
-   1b) VÍDEOS
-   Cole aqui a URL de cada playlist que você criar no YouTube.
-   Deixe url:"" e o app mostra um aviso no lugar do link quebrado.
-   ========================================================== */
-const PLAYLISTS = [
- {titulo:"Desenhos calmos", descricao:"Sem cortes rápidos, sem som alto.", url:""},
- {titulo:"Vídeos sensoriais", descricao:"Imagem e som para regular, sem narração.", url:""},
- {titulo:"Rotina e previsibilidade", descricao:"Vídeos que mostram o que vai acontecer antes de acontecer.", url:""},
- {titulo:"Comunicação alternativa", descricao:"Pranchas, CAA e apoio à fala.", url:""}
-];
-
-const BUSCAS = [
- {titulo:"Desenho sensorial para autismo", q:"desenho infantil sensorial autismo"},
- {titulo:"Desenhos educativos e inclusivos", q:"desenhos animados educativos autismo"},
- {titulo:"Vídeos calmos sem estímulo forte", q:"video calmo relaxante criança autista sem musica alta"},
- {titulo:"Autistas adultos falando de si", q:"adulto autista relato experiencia"}
-];
-
-/* ==========================================================
-   2) BUSCA LOCAL — funciona sempre, inclusive sem internet
-   ========================================================== */
-const SIN = {
- adulto:["adultos","maior","12+","adolescente","jovem"],
- crianca:["criança","infantil","filho","filha","menino","menina","pediatrico","bebe"],
- laudo:["diagnostico","avaliacao","relatorio","cid"],
- carteira:["ciptea","documento","identificacao","cartao","prioridade","direito","girassol"],
- gratis:["gratuito","sus","publico","de graca","sem custo"],
- terapia:["terapeuta","psicologo","psicologia","ocupacional","aba","fono","fonoaudiologia"],
- escola:["educacao","aula","professor","estudo","matricula","inclusao"],
- medico:["neurologia","psiquiatria","consulta","neuropediatria","exame"],
- esporte:["natacao","futebol","capoeira","atletismo","equoterapia","cavalo","atividade fisica","educacao fisica"],
- casa:["domicilio","domiciliar","home care","em casa","nao consigo sair"],
- associacao:["apoio","familia","maes","grupo","associacao"]
-};
-const normalizar = t => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-function expandir(tokens){
-  const saida = new Set(tokens);
-  tokens.forEach(t=>{
-    for(const chave in SIN){
-      const grupo = [chave,...SIN[chave]].map(normalizar);
-      if(grupo.some(g=>g.includes(t)||t.includes(g))) grupo.forEach(g=>saida.add(g));
-    }
-  });
-  return [...saida];
-}
-const blob = r => normalizar([r.nome,r.cat,r.bairro,r.tipo,r.publico,r.custo,r.tags.join(" "),r.acesso.join(" "),r.obs,r.endereco].join(" "));
-function buscarLocal(consulta, base){
-  const tokens = expandir(normalizar(consulta).split(/[^a-z0-9]+/).filter(t=>t.length>2));
-  if(!tokens.length) return base;
-  return base.map(r=>{
-    const texto = blob(r); let nota = 0;
-    tokens.forEach(t=>{ if(texto.includes(t)) nota += normalizar(r.nome+" "+r.tags.join(" ")).includes(t) ? 2 : 1; });
-    return {r,nota};
-  }).filter(x=>x.nota>0).sort((a,b)=>b.nota-a.nota).map(x=>x.r);
-}
-
-/* ==========================================================
-   3) BUSCA COM IA — cai para a busca local se falhar.
-   Para publicar no GitHub Pages, aponte PROXY para o /exec
-   do seu Apps Script. Vazio = tenta a API direta.
-   ========================================================== */
-const PROXY = "";
-async function buscarIA(consulta, base){
-  const resumo = base.map(r=>({id:r.id,nome:r.nome,cat:r.cat,publico:r.publico,custo:r.custo,tags:r.tags}));
-  const prompt = `Você ajuda pessoas autistas e famílias a encontrar serviços em São Luís (MA).
-Registros disponíveis: ${JSON.stringify(resumo)}
-Necessidade: "${consulta}"
-Escolha de 1 a 5 registros. Responda SOMENTE com JSON, sem markdown:
-{"ids":[numeros em ordem de relevancia],"explicacao":"uma frase curta e literal com o criterio usado. Nunca prometa que o servico sera adequado nem que ha vaga; diga apenas o que os dados indicam."}`;
-  const resp = await fetch(PROXY || "https://api.anthropic.com/v1/messages",{
-    method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})
-  });
-  const dados = await resp.json();
-  const texto = (dados.content||[]).map(i=>i.type==="text"?i.text:"").join("");
-  const j = JSON.parse(texto.replace(/```json|```/g,"").trim());
-  const ordenado = j.ids.map(id=>base.find(r=>r.id===id)).filter(Boolean);
-  if(!ordenado.length) throw new Error("sem correspondência");
-  return {lista:ordenado, explicacao:j.explicacao};
-}
-
-/* ==========================================================
-   4) INTERFACE
-   ========================================================== */
-const estado = {cats:new Set(), gratis:false, adulto:false};
-const $ = s => document.querySelector(s);
-const NIVEL = {1:"calmo",2:"moderado",3:"intenso"};
-
-function barras(n){
-  let h = '<div class="barras" aria-hidden="true">';
-  for(let i=1;i<=3;i++) h += '<i class="'+(i<=n?"on":"")+'"></i>';
-  return h + '</div>';
-}
-const medida = (rot,n) => '<div class="medida n'+n+'"><div class="rot">'+rot+'</div>'+barras(n)+'<div class="val">'+NIVEL[n]+'</div></div>';
-
-function faixaSensorial(r){
-  if(r.barulho && r.luz && r.espera){
-    return '<div class="sensorial">'+medida("Barulho",r.barulho)+medida("Luz",r.luz)+medida("Espera",r.espera)+'</div>';
-  }
-  return '<p class="semdado">Barulho, luz e espera ainda não informados. Se você já esteve aqui, conte como foi no fim da página.</p>';
-}
-function cartao(r){
-  return '<article class="card"><div class="topo">'
-    + '<h2>'+r.nome+'</h2>'
-    + '<p class="meta">'+r.tipo+' · '+r.bairro+'</p>'
-    + '<span class="selo'+(r.gratis?'':' priv')+'">'+r.custo+'</span>'
-    + '<div class="linhas">'
-      + '<div><b>Quem atende:</b> '+r.publico+'</div>'
-      + '<div><b>Horário:</b> '+r.horario+'</div>'
-      + '<div><b>Onde:</b> '+r.endereco+'</div>'
-      + '<div><b>Contato:</b> '+r.telefone+'</div>'
-    + '</div>'
-    + faixaSensorial(r)
-    + '<div class="tags">'+r.tags.map(t=>'<span class="tag">'+t+'</span>').join('')+'</div>'
-    + '</div><details><summary>Como chegar até o atendimento</summary><div class="detalhe">'
-      + '<div class="bloco"><h3>Passo a passo</h3><ol>'+r.acesso.map(s=>'<li>'+s+'</li>').join('')+'</ol></div>'
-      + '<div class="bloco"><h3>Vale saber</h3><p>'+r.obs+'</p></div>'
-      + '<p class="fonte">Fonte: <a href="'+r.url+'" target="_blank" rel="noopener">'+r.fonte+'</a>. Confirme por telefone antes de ir.</p>'
-    + '</div></details></article>';
-}
-const filtrar = () => DADOS.filter(r=>{
-  if(estado.cats.size && !estado.cats.has(r.cat)) return false;
-  if(estado.gratis && !r.gratis) return false;
-  if(estado.adulto && !r.adulto) return false;
-  return true;
-});
-function pintar(lista,msg,explicacao){
-  $("#status").textContent = msg;
-  $("#explica").innerHTML = explicacao ? '<p class="explica">'+explicacao+'</p>' : '';
-  $("#lista").innerHTML = lista.map(cartao).join('');
-}
-async function buscar(){
-  const consulta = $("#q").value.trim();
-  const base = filtrar();
-  if(!base.length){ pintar([], "Nenhum registro passa por esses filtros. Desmarque um filtro para ver mais.",""); return; }
-  if(!consulta){ pintar(base, base.length+" registros. Escreva o que você precisa para ordenar por necessidade.",""); return; }
-  const botao = $("#buscar");
-  botao.disabled = true; botao.textContent = "Buscando…"; $("#status").textContent = "Buscando.";
-  try{
-    const {lista,explicacao} = await buscarIA(consulta, base);
-    pintar(lista, lista.length+" resultados.", explicacao);
-  }catch(e){
-    const lista = buscarLocal(consulta, base);
-    if(lista.length) pintar(lista, lista.length+" resultados por palavra-chave.","");
-    else pintar([], "Nada encontrado com essas palavras. Tente de outro jeito, por exemplo “adulto”, “criança” ou “carteira”.","");
-  }finally{ botao.disabled = false; botao.textContent = "Buscar"; }
-}
-document.querySelectorAll(".chip[data-cat]").forEach(c=>{
-  c.addEventListener("click",()=>{
-    const cat = c.dataset.cat, ativo = c.getAttribute("aria-pressed")==="true";
-    c.setAttribute("aria-pressed", String(!ativo));
-    ativo ? estado.cats.delete(cat) : estado.cats.add(cat);
-    buscar();
-  });
-});
-$("#fGratis").addEventListener("click",e=>{
-  estado.gratis = !estado.gratis;
-  e.currentTarget.setAttribute("aria-pressed", String(estado.gratis)); buscar();
-});
-$("#fAdulto").addEventListener("click",e=>{
-  estado.adulto = !estado.adulto;
-  e.currentTarget.setAttribute("aria-pressed", String(estado.adulto)); buscar();
-});
-$("#buscar").addEventListener("click", buscar);
-$("#gerar").addEventListener("click",()=>{
-  const n = $("#indNome").value.trim(), c = $("#indComo").value.trim();
-  if(!n){ $("#saidaInd").innerHTML = '<p class="explica">Escreva o nome do lugar.</p>'; return; }
-  $("#saidaInd").innerHTML = '<p class="explica">Relato para o Conecta Neuro — '+n+'. '+(c || "Sem informação sensorial.")+'</p>';
-});
-/* --- tela de vídeos --- */
-function montarVideos(){
-  $("#listaPlaylists").innerHTML = PLAYLISTS.map(p =>
-    p.url
-      ? '<a class="link-video" href="'+p.url+'" target="_blank" rel="noopener"><strong>'+p.titulo+'</strong><span>'+p.descricao+'</span></a>'
-      : '<div class="vaga"><b>'+p.titulo+'</b> — '+p.descricao+'<br>Playlist ainda não configurada. Crie no YouTube, marque como pública ou não listada, e cole a URL em <code>PLAYLISTS</code>.</div>'
-  ).join("");
-  $("#listaBuscas").innerHTML = BUSCAS.map(b =>
-    '<a class="link-video" href="https://www.youtube.com/results?search_query='+encodeURIComponent(b.q)+'" target="_blank" rel="noopener"><strong>'+b.titulo+'</strong><span>Abre a busca no YouTube</span></a>'
-  ).join("");
-}
-function trocarTela(mostrarVideos){
-  $("#tela-busca").classList.toggle("oculto", mostrarVideos);
-  $("#tela-rodape").classList.toggle("oculto", mostrarVideos);
-  $("#tela-videos").classList.toggle("oculto", !mostrarVideos);
-  $("#verVideos").textContent = mostrarVideos ? "Voltar para a busca" : "Vídeos";
-  window.scrollTo(0,0);
-}
-$("#verVideos").addEventListener("click", ()=> trocarTela($("#tela-videos").classList.contains("oculto")));
-$("#voltarBusca").addEventListener("click", ()=> trocarTela(false));
-montarVideos();
-
-pintar(DADOS, DADOS.length+" registros de fontes públicas.","");
-</script>
 </body>
 </html>
