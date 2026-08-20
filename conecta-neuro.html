@@ -96,6 +96,16 @@ details[open] summary::after{content:"fechar"}
 .link-video:hover{background:#F9FCFF;border-color:#C4D8E8}
 .link-video strong{display:block;font-family:'Bricolage Grotesque',sans-serif;font-size:20px;color:var(--primary-dark);margin-bottom:5px}
 .link-video span{font-size:15px;color:var(--muted)}
+select{width:100%;padding:14px 16px;margin-top:10px;font:inherit;font-size:17px;border:2px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);min-height:52px}
+.campo-rel{margin-top:18px}
+.campo-rel label{display:block;font-weight:700;font-size:16px;margin-bottom:2px}
+.grade3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.grade3 label{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.grade3 select{margin-top:6px;font-size:16px;padding:12px 10px}
+.ok-rel{margin:16px 0 0;padding:14px 16px;border-radius:18px;background:#ECFBF7;border-left:6px solid var(--secondary);font-size:16px;color:#22443E}
+.erro-rel{background:#FFF9E9;border-left-color:#E9B949;color:#6B5200}
+.selo-rel{display:inline-block;margin-left:8px;font-size:12px;font-weight:700;padding:4px 9px;border-radius:999px;background:#EEF6FF;color:var(--primary-dark);text-transform:none;letter-spacing:0}
+@media (max-width:420px){.grade3{grid-template-columns:1fr}}
 .hero-atalhos{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
 .hero-atalho{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;min-height:44px;border-radius:999px;background:rgba(255,255,255,.8);border:1px solid #D9E7F1;color:var(--primary-dark);font-family:inherit;font-weight:700;font-size:14px;box-shadow:var(--shadow-sm);cursor:pointer}
 .hero-atalho:hover{background:#fff;border-color:#B8D0E2}
@@ -159,10 +169,28 @@ details[open] summary::after{content:"fechar"}
 
 <section class="rodape" id="tela-rodape">
   <h2>Já foi a algum desses lugares?</h2>
-  <p class="meta">As informações sensoriais fazem diferença de verdade. Se você já esteve em algum lugar, descreva como foi o barulho, a luz, a espera e o acolhimento.</p>
-  <input type="text" id="indNome" placeholder="Qual lugar?">
-  <input type="text" id="indComo" placeholder="Como era o barulho, a luz e a espera?">
-  <button class="btn btn-2" id="gerar">Gerar texto do relato</button>
+  <p class="meta">Barulho, luz e espera são a informação que falta no app — e só quem foi sabe. O que você marcar aparece na hora no cartão. Cada lugar guarda os três relatos mais recentes, para a média refletir como ele está hoje.</p>
+
+  <div class="campo-rel">
+    <label for="relLugar">Qual lugar?</label>
+    <select id="relLugar"></select>
+  </div>
+
+  <div class="grade3">
+    <div><label for="relBarulho">Barulho</label>
+      <select id="relBarulho"><option value="">—</option><option value="1">Calmo</option><option value="2">Moderado</option><option value="3">Intenso</option></select></div>
+    <div><label for="relLuz">Luz</label>
+      <select id="relLuz"><option value="">—</option><option value="1">Calma</option><option value="2">Moderada</option><option value="3">Intensa</option></select></div>
+    <div><label for="relEspera">Espera</label>
+      <select id="relEspera"><option value="">—</option><option value="1">Curta</option><option value="2">Média</option><option value="3">Longa</option></select></div>
+  </div>
+
+  <div class="campo-rel">
+    <label for="relObs">Quer acrescentar algo? (opcional)</label>
+    <input type="text" id="relObs" placeholder="Ex: a sala 2 é mais silenciosa">
+  </div>
+
+  <button class="btn" id="gerar">Enviar relato</button>
   <div id="saidaInd"></div>
 </section>
 
@@ -423,6 +451,10 @@ function buscarLocal(consulta, base){
    do seu Apps Script. Vazio = tenta a API direta.
    ========================================================== */
 const PROXY = "";
+
+/* URL do seu Apps Script (/exec) que grava os relatos numa planilha.
+   Vazio = os relatos ficam salvos só neste aparelho. */
+const ENDPOINT_RELATOS = "";
 async function buscarIA(consulta, base){
   const resumo = base.map(r=>({id:r.id,nome:r.nome,cat:r.cat,publico:r.publico,custo:r.custo,tags:r.tags}));
   const prompt = `Você ajuda pessoas autistas e famílias a encontrar serviços em São Luís (MA).
@@ -457,8 +489,17 @@ function barras(n){
 const medida = (rot,n) => '<div class="medida n'+n+'"><div class="rot">'+rot+'</div>'+barras(n)+'<div class="val">'+NIVEL[n]+'</div></div>';
 
 function faixaSensorial(r){
-  if(r.barulho && r.luz && r.espera){
-    return '<div class="sensorial">'+medida("Barulho",r.barulho)+medida("Luz",r.luz)+medida("Espera",r.espera)+'</div>';
+  if(r.barulho || r.luz || r.espera){
+    const n = r.nRelatos || 0;
+    const selo = n ? '<span class="selo-rel">'+n+(n===1?' relato recente':' relatos recentes')+'</span>' : '';
+    let h = '<div class="sensorial">';
+    if(r.barulho) h += medida("Barulho",r.barulho);
+    if(r.luz)     h += medida("Luz",r.luz);
+    if(r.espera)  h += medida("Espera",r.espera);
+    h += '</div>';
+    if(selo) h += '<p class="meta" style="margin-top:8px">Média dos últimos relatos de quem esteve lá'+selo+'</p>';
+    if(r.relatoTexto) h += '<p class="meta" style="margin-top:6px">'+r.relatoTexto+'</p>';
+    return h;
   }
   return '<p class="semdado">Barulho, luz e espera ainda não informados. Se você já esteve aqui, conte como foi no fim da página.</p>';
 }
@@ -537,11 +578,124 @@ document.querySelectorAll(".hero-atalho").forEach(a=>{
     $("#tela-busca").scrollIntoView({block:"start"});
   });
 });
-$("#gerar").addEventListener("click",()=>{
-  const n = $("#indNome").value.trim(), c = $("#indComo").value.trim();
-  if(!n){ $("#saidaInd").innerHTML = '<p class="explica">Escreva o nome do lugar.</p>'; return; }
-  $("#saidaInd").innerHTML = '<p class="explica">Relato para o Conecta Neuro — '+n+'. '+(c || "Sem informação sensorial.")+'</p>';
-});
+/* ==========================================================
+   5) RELATOS SENSORIAIS
+   Guardados neste aparelho e, se ENDPOINT_RELATOS estiver
+   preenchido, também enviados para a planilha.
+   ========================================================== */
+let RELATOS = {};
+const MAX_RELATOS = 3;   // guarda só os 3 mais recentes de cada lugar
+
+function temStorage(){
+  return typeof window !== "undefined" && window.storage && typeof window.storage.get === "function";
+}
+async function carregarRelatos(){
+  // 1) base compartilhada, se houver endpoint
+  if(ENDPOINT_RELATOS){
+    try{
+      const resp = await fetch(ENDPOINT_RELATOS);
+      const remoto = await resp.json();
+      if(remoto && typeof remoto === "object"){
+        RELATOS = remoto;
+        aplicarRelatos();
+        buscar();
+        return;
+      }
+    }catch(e){ /* sem rede: cai para o aparelho */ }
+  }
+  // 2) o que estiver salvo neste aparelho
+  if(!temStorage()) return;
+  try{
+    const r = await window.storage.get("relatos-sensoriais");
+    if(r && r.value){
+      RELATOS = JSON.parse(r.value);
+      Object.keys(RELATOS).forEach(k=>{ RELATOS[k] = RELATOS[k].slice(-MAX_RELATOS); });
+    }
+  }catch(e){ RELATOS = {}; }
+  aplicarRelatos();
+  buscar();
+}
+async function salvarRelatos(){
+  if(!temStorage()) return false;
+  try{
+    await window.storage.set("relatos-sensoriais", JSON.stringify(RELATOS));
+    return true;
+  }catch(e){ return false; }
+}
+function media(lista, campo){
+  const v = lista.map(x=>x[campo]).filter(Boolean);
+  if(!v.length) return null;
+  return Math.round(v.reduce((a,b)=>a+b,0)/v.length);
+}
+function aplicarRelatos(){
+  DADOS.forEach(r=>{
+    const lista = RELATOS[r.id];
+    if(!lista || !lista.length){ r.nRelatos = 0; return; }
+    r.barulho = media(lista,"barulho");
+    r.luz     = media(lista,"luz");
+    r.espera  = media(lista,"espera");
+    r.nRelatos = lista.length;
+    const obs = lista.map(x=>x.obs).filter(Boolean);
+    if(obs.length) r.relatoTexto = obs.join(" · ");
+  });
+}
+async function enviarRelato(){
+  const id  = parseInt($("#relLugar").value, 10);
+  const bar = parseInt($("#relBarulho").value, 10) || null;
+  const luz = parseInt($("#relLuz").value, 10) || null;
+  const esp = parseInt($("#relEspera").value, 10) || null;
+  const obs = $("#relObs").value.trim();
+  const saida = $("#saidaInd");
+
+  if(!id){ saida.innerHTML = '<p class="ok-rel erro-rel">Escolha o lugar antes de enviar.</p>'; return; }
+  if(!bar && !luz && !esp){ saida.innerHTML = '<p class="ok-rel erro-rel">Marque pelo menos uma das três medidas.</p>'; return; }
+
+  const registro = {barulho:bar, luz:luz, espera:esp, obs:obs, quando:new Date().toISOString()};
+  if(!RELATOS[id]) RELATOS[id] = [];
+  RELATOS[id].push(registro);
+  RELATOS[id] = RELATOS[id].slice(-MAX_RELATOS);
+
+  aplicarRelatos();
+  buscar();
+
+  const lugar = DADOS.find(r=>r.id===id);
+  const guardado = await salvarRelatos();
+
+  let enviado = false;
+  if(ENDPOINT_RELATOS){
+    try{
+      await fetch(ENDPOINT_RELATOS, {method:"POST", headers:{"Content-Type":"text/plain"},
+        body: JSON.stringify({lugar:lugar.nome, id:id, ...registro})});
+      enviado = true;
+    }catch(e){ enviado = false; }
+  }
+
+  const texto = "Relato Conecta Neuro — " + lugar.nome
+    + " | barulho: " + (bar ? NIVEL[bar] : "não informado")
+    + " | luz: " + (luz ? NIVEL[luz] : "não informado")
+    + " | espera: " + (esp ? NIVEL[esp] : "não informado")
+    + (obs ? " | " + obs : "");
+
+  let msg = "Obrigado. O cartão de <b>" + lugar.nome + "</b> já foi atualizado com o que você marcou.";
+  if(enviado) msg += " O relato também foi enviado para a base compartilhada.";
+  else if(guardado) msg += " Ele fica salvo neste aparelho. Para somar com o relato de outras famílias, envie também pelo link abaixo.";
+  else msg += " Ele vale para esta sessão. Para não se perder, envie pelo link abaixo.";
+
+  saida.innerHTML = '<p class="ok-rel">' + msg
+    + '<br><br><a href="https://wa.me/?text=' + encodeURIComponent(texto) + '" target="_blank" rel="noopener">Enviar por WhatsApp</a></p>';
+
+  $("#relBarulho").value = ""; $("#relLuz").value = ""; $("#relEspera").value = ""; $("#relObs").value = "";
+}
+function montarSelectLugares(){
+  const sel = $("#relLugar");
+  sel.innerHTML = '<option value="">Escolha um lugar</option>'
+    + DADOS.filter(r=>r.tipo!=="Direito")
+           .map(r=>'<option value="'+r.id+'">'+r.nome+'</option>').join("");
+}
+$("#gerar").addEventListener("click", enviarRelato);
+montarSelectLugares();
+carregarRelatos();
+
 /* --- tela de vídeos --- */
 function montarVideos(){
   $("#listaPlaylists").innerHTML = PLAYLISTS.map(p =>
