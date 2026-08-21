@@ -454,7 +454,7 @@ const PROXY = "";
 
 /* URL do seu Apps Script (/exec) que grava os relatos numa planilha.
    Vazio = os relatos ficam salvos só neste aparelho. */
-const ENDPOINT_RELATOS = "";
+const ENDPOINT_RELATOS = "https://script.google.com/macros/s/AKfycbwZZ-h_wsdPKnHgQ_Ml9sBUTxCSb_NGbJLQKMJxnfQM0Jpvru73Xo-O1Akt9YRqQv0/exec";
 async function buscarIA(consulta, base){
   const resumo = base.map(r=>({id:r.id,nome:r.nome,cat:r.cat,publico:r.publico,custo:r.custo,tags:r.tags}));
   const prompt = `Você ajuda pessoas autistas e famílias a encontrar serviços em São Luís (MA).
