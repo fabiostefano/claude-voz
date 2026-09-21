@@ -716,22 +716,39 @@ function abrirGmailEmAba(url,motivo){
 function runGmailCleanup(){
   var url = urlDe('gmail');
   if(!url){ bubble('err','Configure a URL do friday-hub na ⚙.'); say('Falta configurar o servidor.'); openP('settings'); return; }
-  openP('chat'); bubble('sys','📧 limpando o Gmail…'); say('Rodando a limpeza do Gmail.'); energy=1.3;
+  openP('chat'); bubble('sys','📧 limpando o Gmail…'); say('Pedindo a limpeza do Gmail.'); energy=1.3;
+  var nota=function(t){ chatHistory.push({role:'assistant',content:'[app] resultado real da limpeza do Gmail: '+t}); save(); };
 
   if(cfg.hub){
-    // hub responde JSON: resultado direto no chat, sem abrir janela
+    // hub responde JSON: só declara sucesso se o hub realmente confirmar
     chamarHub('gmail',{acao:'limpar_gmail'})
       .then(function(t){
+        t=String(t||'').trim();
         log('limpeza: '+t.slice(0,120));
-        if(/^erro:/i.test(t.trim())){ bubble('err',t.trim()); say('A limpeza foi recusada.'); return; }
-        var j; try{ j=JSON.parse(t); }catch(e){ bubble('ai',t.slice(0,300)); say('Limpeza concluída.'); return; }
-        var msg = j.mensagem || (j.movidos+' e-mail(s) movidos para a lixeira.');
-        bubble('ai','🧹 '+msg); say(msg);
+        if(/^erro:/i.test(t)){ bubble('err',t); nota('recusada pelo hub — '+t); say('A limpeza foi recusada.'); return; }
+        var j; try{ j=JSON.parse(t); }catch(e){
+          bubble('err','A limpeza não foi confirmada: resposta inesperada do servidor — '+t.slice(0,200));
+          nota('sem confirmação, resposta inesperada — '+t.slice(0,120)); say('A limpeza não foi confirmada.'); return;
+        }
+        if(j.erro||j.error||j.ok===false){
+          var em=String(j.erro||j.error||j.mensagem||'o servidor recusou');
+          bubble('err','Limpeza não concluída: '+em); nota('não concluída — '+em); say('A limpeza não foi concluída.'); return;
+        }
+        var msg = j.mensagem || (typeof j.movidos==='number' ? (j.movidos+' e-mail(s) movidos para a lixeira.') : '');
+        if(!msg){
+          bubble('err','A limpeza não confirmou o resultado: '+t.slice(0,200));
+          nota('sem confirmação do resultado'); say('A limpeza não foi confirmada.'); return;
+        }
+        bubble('ai','🧹 '+msg); nota('concluída — '+msg); say(msg);
         addNode({id:'limp'+Date.now().toString(36),label:'Limpeza '+new Date().toLocaleDateString('pt-BR'),
           cluster:'gmail',detail:msg+' Executada em '+new Date().toLocaleString('pt-BR')+'.',connectTo:['limpeza']});
         save();
       })
-      .catch(function(e){ log('✖ limpeza: '+e.message); bubble('err','Falha na limpeza: '+e.message); say('Não consegui limpar.'); });
+      .catch(function(e){
+        log('✖ limpeza: '+e.message);
+        if(e.message==='cancelado'){ bubble('sys','Limpeza cancelada — a chave crítica não foi informada.'); nota('cancelada pelo usuário'); say('Limpeza cancelada.'); return; }
+        bubble('err','Falha na limpeza: '+e.message); nota('falhou — '+e.message); say('Não consegui limpar.');
+      });
     return;
   }
 
@@ -757,13 +774,71 @@ function urlDe(servico){
   if(servico==='gmail')    return cfg.gmail;
   return '';
 }
-function chamarHub(servico, payload){
+var ACOES_CRITICAS=['limpar','limpar_gmail','st_comandar'];   // mesma lista do hub (ACOES_CRITICAS no Código.gs)
+var _critica={valor:'',ate:0};
+function urlAppsScriptValida(u){
+  return /^https:\/\/script\.google\.com\/\S+\/(exec|dev)(\?\S*)?$/.test(String(u||'').trim());
+}
+function pedirChaveCritica(acao){
+  return new Promise(function(res,rej){
+    if(_critica.valor&&Date.now()<_critica.ate){ res(_critica.valor); return; }
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;left:0;top:0;right:0;bottom:0;z-index:99999;background:rgba(3,6,12,.9);display:flex;align-items:center;justify-content:center;padding:20px';
+    var box=document.createElement('div');
+    box.style.cssText='width:100%;max-width:440px;background:#0e1420;border:1px solid rgba(224,101,95,.55);border-radius:16px;padding:20px;color:#e8eef5;font-family:system-ui,sans-serif;font-size:calc(15px * var(--ui,1))';
+    var t=document.createElement('div'); t.style.cssText='font-weight:700;margin-bottom:8px;color:#E0655F'; t.textContent='Ação irreversível';
+    var d=document.createElement('div'); d.style.cssText='margin-bottom:12px;opacity:.85;line-height:1.4';
+    d.textContent='A ação "'+acao+'" exige a chave crítica. Digite-a para continuar (fica só na memória do app por 5 minutos, nunca é salva).';
+    var i=document.createElement('input'); i.type='password'; i.autocomplete='off'; i.setAttribute('autocapitalize','off'); i.setAttribute('autocorrect','off'); i.spellcheck=false;
+    i.placeholder='chave crítica';
+    i.style.cssText='width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:#070b12;color:#fff;font-size:calc(16px * var(--ui,1));margin-bottom:14px';
+    var row=document.createElement('div'); row.style.cssText='display:flex;gap:10px';
+    var bc=document.createElement('button'); bc.textContent='Cancelar';
+    bc.style.cssText='flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#e8eef5;font-size:inherit';
+    var bo=document.createElement('button'); bo.textContent='Confirmar';
+    bo.style.cssText='flex:1;padding:12px;border-radius:10px;border:none;background:#E0655F;color:#fff;font-weight:700;font-size:inherit';
+    function fechar(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
+    function ok(){ var v=i.value.trim(); if(!v){ i.focus(); return; } _critica={valor:v,ate:Date.now()+5*60*1000}; fechar(); res(v); }
+    bc.addEventListener('click',function(){ fechar(); rej(new Error('cancelado')); });
+    bo.addEventListener('click',ok);
+    i.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); ok(); } });
+    row.appendChild(bc); row.appendChild(bo);
+    box.appendChild(t); box.appendChild(d); box.appendChild(i); box.appendChild(row);
+    ov.appendChild(box); document.body.appendChild(ov);
+    setTimeout(function(){ try{ i.focus(); }catch(e){} },60);
+  });
+}
+function chamarHub(servico, payload, opts){
+  opts=opts||{};
   var url = urlDe(servico);
   if(!url) return Promise.reject(new Error('configure a URL do friday-hub na ⚙'));
-  payload.chave = cfg.chave||'';
-  return fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify(payload),redirect:'follow'})
-    .then(function(r){ return r.text(); });
+  if(!urlAppsScriptValida(url)){
+    return Promise.reject(new Error('o campo de URL do '+(cfg.hub?'friday-hub':servico)+' não contém uma URL do Apps Script (deve começar com https://script.google.com/ e terminar em /exec). Confira na ⚙.'));
+  }
+  var critica = ACOES_CRITICAS.indexOf(String(payload.acao||'').toLowerCase())!==-1;
+  var chaveP = critica ? pedirChaveCritica(payload.acao) : Promise.resolve(cfg.chave||'');
+  return chaveP.then(function(chave){
+    payload.chave = chave;
+    var ms = opts.timeout||45000;
+    var ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
+    var tid=setTimeout(function(){ if(ctrl) ctrl.abort(); },ms);
+    return fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(payload),redirect:'follow',signal:ctrl?ctrl.signal:undefined})
+      .then(function(r){
+        clearTimeout(tid);
+        return r.text().then(function(t){
+          if(!r.ok) throw new Error('HTTP '+r.status+' — a URL configurada não respondeu como um Apps Script');
+          if(/^\s*<(!doctype|html)/i.test(t)) throw new Error('o servidor devolveu uma página HTML em vez de dados — confira a URL e se a implantação está como "Qualquer pessoa"');
+          if(critica&&/^\s*erro:\s*(esta acao exige a chave critica|chave invalida)/i.test(t)) _critica={valor:'',ate:0};
+          return t;
+        });
+      })
+      .catch(function(e){
+        clearTimeout(tid);
+        if(e&&e.name==='AbortError') throw new Error('o servidor não respondeu em '+Math.round(ms/1000)+'s (timeout)');
+        throw e;
+      });
+  });
 }
 
 /* ═════ E-MAIL E WHATSAPP ═════ */
@@ -1139,22 +1214,51 @@ var MAX_TOTAL=8*1024*1024;     // 8 MB no total
 function fmtSz(b){ return b<1024?b+' B':(b<1048576?(b/1024).toFixed(0)+' KB':(b/1048576).toFixed(1)+' MB'); }
 function totalAnexos(){ var t=0; anexos.forEach(function(a){t+=a.size;}); return t; }
 
+// reduz a imagem (lado maior 1600 px, JPEG 0,8): um print de celular cai de ~650 KB para ~150 KB e o envio deixa de estourar o timeout
+function comprimirImagem(dataURL,maxLado,qualidade){
+  return new Promise(function(res){
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var w=img.naturalWidth,h=img.naturalHeight,esc=Math.min(1,maxLado/Math.max(w,h));
+        var cw=Math.max(1,Math.round(w*esc)),ch=Math.max(1,Math.round(h*esc));
+        var cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
+        var c=cv.getContext('2d'); c.fillStyle='#fff'; c.fillRect(0,0,cw,ch); c.drawImage(img,0,0,cw,ch);
+        var out=cv.toDataURL('image/jpeg',qualidade);
+        res({dataURL:out,b64:out.split(',')[1]});
+      }catch(e){ res(null); }
+    };
+    img.onerror=function(){ res(null); };
+    img.src=dataURL;
+  });
+}
 function lerArquivo(file){
   return new Promise(function(res,rej){
-    if(file.size>MAX_ARQ){ rej(new Error(file.name+' tem '+fmtSz(file.size)+' — o limite é 4 MB')); return; }
-    if(totalAnexos()+file.size>MAX_TOTAL){ rej(new Error('total de anexos passou de 8 MB')); return; }
     var tipo=file.type||'';
     var ehImg=/^image\//.test(tipo);
     var ehPdf=tipo==='application/pdf'||/\.pdf$/i.test(file.name);
+    if(!ehImg&&file.size>MAX_ARQ){ rej(new Error(file.name+' tem '+fmtSz(file.size)+' — o limite é 4 MB')); return; }
+    if(ehImg&&file.size>15*1024*1024){ rej(new Error(file.name+' tem '+fmtSz(file.size)+' — o limite para imagens é 15 MB')); return; }
+    if(!ehImg&&totalAnexos()+file.size>MAX_TOTAL){ rej(new Error('total de anexos passou de 8 MB')); return; }
     var r=new FileReader();
     r.onerror=function(){ rej(new Error('não consegui ler '+file.name)); };
-    if(ehImg||ehPdf){
+    if(ehImg){
+      r.onload=function(){
+        var orig=r.result, b64o=String(orig).split(',')[1];
+        comprimirImagem(orig,1600,0.8).then(function(c){
+          var usar=(c&&c.b64&&c.b64.length<b64o.length)?c:null;
+          var b64=usar?usar.b64:b64o, prev=usar?usar.dataURL:orig, media=usar?'image/jpeg':(tipo||'image/jpeg');
+          var tam=Math.round(b64.length*0.75);
+          if(usar) log('imagem reduzida: '+fmtSz(file.size)+' → '+fmtSz(tam));
+          if(totalAnexos()+tam>MAX_TOTAL){ rej(new Error('total de anexos passou de 8 MB')); return; }
+          res({ name:file.name, size:tam, kind:'image', media:media, data:b64, preview:prev });
+        });
+      };
+      r.readAsDataURL(file);
+    } else if(ehPdf){
       r.onload=function(){
         var b64=String(r.result).split(',')[1];
-        res({ name:file.name, size:file.size,
-              kind:ehImg?'image':'document',
-              media:ehImg?(tipo||'image/jpeg'):'application/pdf',
-              data:b64, preview:ehImg?r.result:null });
+        res({ name:file.name, size:file.size, kind:'document', media:'application/pdf', data:b64, preview:null });
       };
       r.readAsDataURL(file);
     } else {
@@ -1234,9 +1338,10 @@ function capturarFrame(tentativa){
     return;
   }
   var cv=document.createElement('canvas');
-  cv.width=v.videoWidth; cv.height=v.videoHeight;
+  var escCam=Math.min(1,1600/Math.max(v.videoWidth,v.videoHeight));
+  cv.width=Math.round(v.videoWidth*escCam); cv.height=Math.round(v.videoHeight*escCam);
   cv.getContext('2d').drawImage(v,0,0,cv.width,cv.height);
-  var dataURL=cv.toDataURL('image/jpeg',0.85);
+  var dataURL=cv.toDataURL('image/jpeg',0.8);
   var b64=dataURL.split(',')[1];
   var nome='camera_'+Date.now()+'.jpg';
   anexos.push({ name:nome, size:Math.round(b64.length*0.75), kind:'image',
@@ -1269,17 +1374,24 @@ function blocosDaMensagem(texto){
 
 function bubble(cls,text){ var d=document.createElement('div'); d.className='msg '+cls; d.textContent=text;
   msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
-function renderMsgs(){ msgs.innerHTML=''; chatHistory.forEach(function(m){bubble(m.role==='user'?'user':'ai',m.content);}); msgs.scrollTop=msgs.scrollHeight; }
+function renderMsgs(){ msgs.innerHTML=''; chatHistory.forEach(function(m){ if(m.role==='assistant'&&/^\[app\] /.test(m.content)) return; bubble(m.role==='user'?'user':'ai',m.content);}); msgs.scrollTop=msgs.scrollHeight; }
 function setFocus(n){
   focusNode=n;
   var bar=$('focusBar');
   if(n){ bar.classList.add('on'); $('focusLabel').textContent='Falando sobre: '+n.label; }
   else bar.classList.remove('on');
 }
-function handleVoice(t){
-  if(/limp\w*\s+(o\s+|meu\s+|meus\s+)?(g-?mail|e-?mails?|caixa|inbox)/i.test(t)){ runGmailCleanup(); return; }
-  sendMsg(t);
+// reconhece só ORDENS de limpeza (ancoradas no início) — perguntas como "por que a limpeza do gmail foi recusada?" NÃO disparam nada
+function ehLimpezaGmail(n){
+  n=String(n||'').trim().replace(/^(por favor|pf|entao|agora|friday)[,\s]+/,'');
+  var alvo='(?:(?:o|a|os|as|do|da|dos|das|de|meu|meus|minha|minhas)\\s+)*(?:g-?mail|e-?mails?|caixa(?:\\s+de\\s+entrada)?|inbox)';
+  var fim='[.!\\s]*$';
+  var aux='(?:(?:pode|vamos|quero|preciso|vai)\\s+)?';
+  return new RegExp('^'+aux+'(?:limp[ae]r?|limpe)\\s+'+alvo+fim).test(n)
+      || new RegExp('^'+aux+'(?:faz|faca|fazer|roda|rode|rodar|executa|execute|executar|inicia|inicie|iniciar|dispara|dispare|disparar)\\s+(?:a\\s+|uma\\s+)?limpeza\\s+'+alvo+fim).test(n)
+      || new RegExp('^limpeza\\s+'+alvo+fim).test(n);
 }
+function handleVoice(t){ sendMsg(t); }
 function graphSummary(){ return graph.nodes.map(function(n){return n.id+'|'+n.label+'|'+n.cluster;}).join('\n'); }
 function agoraFormatado(){
   var d=new Date();
@@ -1305,6 +1417,7 @@ function SYSTEM(){
   (memoria?'MEMÓRIA PERSISTENTE (o que você já sabe de sessões anteriores — trate como fato):\n'+memoria+'\n\n':'')+
   'Grafo atual (id|label|cluster):\n'+graphSummary()+'\n\n'+
   'Clusters válidos: vale, calango, dev, tri, gmail, novo.\n'+
+  'REGRA DAS AÇÕES: quem executa a action é o app, não você. O "reply" que acompanha uma action só pode anunciar a intenção (ex.: "vou pedir a limpeza agora"). Nunca diga que foi concluída, feita, enviada ou disparada — o resultado real aparece depois na tela e pode ser um erro. Se a conversa trouxer uma linha começando com "[app]", ela é o resultado real da ação: use-a para responder perguntas sobre o que aconteceu.\n'+
   'AÇÕES DISPONÍVEIS no campo "action" (use só quando ele pedir claramente):\n'+
   '- "limpar_gmail" (string simples)\n'+
   '- {"tipo":"email","assunto":"…","corpo":"texto completo do e-mail","para":null,"anexar":true} — para=null envia para o próprio Fábio; anexar=true junta o último arquivo gerado. Se ele pedir documento + e-mail, preencha "file" E "action" na mesma resposta.\n'+
@@ -1331,6 +1444,7 @@ function SYSTEM(){
   'ou sugira levar ao Claude com o contexto pronto. É melhor dizer "preciso ver X para responder" do que apresentar um palpite como diagnóstico. '+
   'Nunca numere ou formalize como "bug confirmado" algo que você apenas supôs.\n\n'+
   'ANEXOS: quando vierem imagens, PDFs ou arquivos de texto, analise o conteúdo e responda sobre ele. '+
+  'Um anexo só chega na mensagem em que foi enviado; nas mensagens seguintes o histórico traz apenas o nome do arquivo (📎 nome), sem o conteúdo. Se ele perguntar de novo sobre um anexo que você não vê nesta mensagem, diga que o conteúdo não está mais disponível e peça para reenviar — e antes disso reveja o que você mesma já respondeu sobre ele no histórico. '+
   'Se o material for relevante para um projeto do Fábio, crie um nó novo com o resumo no campo detail. '+
   'Documentos técnicos (P&ID, relatórios, planilhas) vão no cluster vale; texto do livro vai em calango; código vai em dev.\n\n'+
   'CÂMERA: você nunca tem acesso a vídeo ao vivo. Só enxerga o que vier como anexo de imagem de verdade (uma foto capturada e enviada). '+
@@ -1370,19 +1484,20 @@ function safeMessages(){
   if(!out.length||out[out.length-1].role!=='user') return null;
   return out;
 }
-function callBrain(body){
+function callBrain(body,limiteMs){
+  limiteMs=limiteMs||45000;
   if(!cfg.friday) return Promise.reject(new Error('URL da FRIDAY não configurada'));
   // timeout de segurança: sem isso, uma requisição que nunca resolve nem rejeita
   // deixava "busy" travado em true pra sempre — toda mensagem seguinte (digitada
   // ou falada) era descartada em silêncio, sem log, sem erro, sem fala.
   var ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
-  var timeoutId=setTimeout(function(){ if(ctrl) ctrl.abort(); },20000);
+  var timeoutId=setTimeout(function(){ if(ctrl) ctrl.abort(); },limiteMs);
   return fetch(cfg.friday,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify(body),redirect:'follow',signal:ctrl?ctrl.signal:undefined})
     .then(function(r){ clearTimeout(timeoutId); log('friday HTTP '+r.status); return r.text(); })
     .catch(function(e){
       clearTimeout(timeoutId);
-      if(e&&e.name==='AbortError') throw new Error('servidor não respondeu em 20s (timeout)');
+      if(e&&e.name==='AbortError') throw new Error('servidor não respondeu em '+Math.round(limiteMs/1000)+'s (timeout)');
       throw e;
     })
     .then(function(t){
@@ -1691,6 +1806,14 @@ function sendMsg(text,automatico){
   // detecção robusta de comandos de câmera: por palavras-chave, não por estrutura de frase
   // (regex rígido falhava com "abrir" no infinitivo, texto duplicado ou palavras extras no meio)
   var txtNorm=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+  // ordem de limpeza do Gmail: executa direto, sem a API (que respondia "disparada" antes de existir resultado)
+  if(!anexos.length&&ehLimpezaGmail(txtNorm)){
+    inp.value=''; inp.style.height='auto';
+    chatHistory.push({role:'user',content:text});
+    runGmailCleanup();
+    return;
+  }
   var falaCamera=/\bcamera\b/.test(txtNorm);
   var verboAbrir=/\b(abr|abri|abre|abra|abrir|lig|liga|ligar|ativ|ativa|ativar|acion)/.test(txtNorm);
   var verboCapturar=/\b(tir|tira|tirar|bat|bate|bater|captur|capture|capturar|foto|fotografa|fotografar|clic)/.test(txtNorm);
@@ -1736,6 +1859,7 @@ function sendMsg(text,automatico){
   var rotulo=text+(anexos.length?'\n📎 '+anexos.map(function(a){return a.name;}).join(', '):'');
   chatHistory.push({role:'user',content:rotulo}); bubble('user',rotulo);
 
+  var temAnexo=anexos.length>0, enviados=anexos.slice(), limiteMs=temAnexo?90000:45000;
   busy=true; sendBtn.disabled=true; stopRec(); orb.classList.add('thinking'); energy=1;
   var typing=bubble('ai',''); typing.innerHTML='<span class="typing"><span></span><span></span><span></span></span>';
   var list=safeMessages();
@@ -1743,7 +1867,7 @@ function sendMsg(text,automatico){
   // rede de segurança final: mesmo que algum caminho de código esqueça de chamar done(),
   // isso garante que 'busy' nunca fica travado por mais de 25s travando toda a Friday
   clearTimeout(window._busyWatchdog);
-  window._busyWatchdog=setTimeout(function(){ if(busy){ log('✖ watchdog: busy travado, destravando'); done(); } },25000);
+  window._busyWatchdog=setTimeout(function(){ if(busy){ log('✖ watchdog: busy travado, destravando'); done(); } },limiteMs+8000);
   if(!list){ typing.remove(); bubble('err','Histórico inválido.'); done(); return; }
 
   // a última mensagem carrega os anexos de verdade
@@ -1765,7 +1889,7 @@ function sendMsg(text,automatico){
       if(ultima.content[bi].type==='text'){ ultima.content[bi].text=instrucoes+ultima.content[bi].text; break; }
     }
   }
-  callBrain({model:'claude-sonnet-4-6',max_tokens:16000,system:SYSTEM(),messages:list})
+  callBrain({model:'claude-sonnet-4-6',max_tokens:16000,system:SYSTEM(),messages:list},limiteMs)
     .then(function(data){
       var raw=(data.content||[]).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
       var p=extractReply(raw);
@@ -1812,6 +1936,13 @@ function sendMsg(text,automatico){
     .catch(function(e){
       log('✖ cérebro: '+e.message);
       typing.remove(); bubble('err','Erro: '+e.message); done(); say('Deu erro na conexão.');
+      // não perde o que o usuário mandou: devolve texto e anexos para tentar de novo com um toque
+      if(!automatico){
+        if(chatHistory.length&&chatHistory[chatHistory.length-1].role==='user') chatHistory.pop();
+        if(text&&text!=='Analise o material anexado.') inp.value=text;
+        if(enviados.length&&!anexos.length){ anexos=enviados; renderAnexos(); bubble('sys','📎 anexo mantido — toque em enviar para tentar de novo'); }
+        save();
+      }
     });
 }
 function addNode(n){
@@ -1859,7 +1990,7 @@ window.addEventListener('DOMContentLoaded',function(){
   loadState(); rebuild(); requestAnimationFrame(draw);
   setTimeout(function(){ try{ briefingAutomatico(false); }catch(e){ log('✖ briefing boot: '+e.message); } }, 2500);
   if(window.speechSynthesis){ speechSynthesis.onvoiceschanged=loadVoices; loadVoices(); }
-  log('★ VERSAO CAM-FIX-7 · fala nao se perde no fim da sessao + camera');
+  log('★ VERSAO CHAVE-FIX-8 · chave critica + validacao de resposta + imagem comprimida');
   log('protocolo: '+location.protocol+' · '+(SR?'SpeechRecognition OK':'SEM SpeechRecognition'));
   log('em iframe: '+(window.self!==window.top?'SIM':'não')+' · '+(lsOK?'localStorage OK':'memória volátil'));
 
@@ -1917,7 +2048,15 @@ window.addEventListener('DOMContentLoaded',function(){
     cfg.friday=$('cfgFriday').value.trim(); cfg.gmail=$('cfgGmail').value.trim();
     cfg.email=$('cfgEmail').value.trim(); cfg.chave=$('cfgChave').value.trim();
     cfg.calendar=$('cfgCalendar').value.trim(); cfg.backup=$('cfgBackup').value.trim(); cfg.hub=$('cfgHub').value.trim(); save();
-    log('config salva'); closeP('settings'); say('Configuração salva.');
+    log('config salva');
+    var nomes={friday:'URL do servidor FRIDAY',gmail:'URL do LimpezaGmail',email:'URL do friday-email',hub:'URL do friday-hub',backup:'URL do friday-backup',calendar:'URL do friday-calendar'};
+    var ruins=Object.keys(nomes).filter(function(k){ return cfg[k]&&!urlAppsScriptValida(cfg[k]); }).map(function(k){ return nomes[k]; });
+    if(ruins.length){
+      log('✖ não é URL do Apps Script: '+ruins.join(', '));
+      alert('Configuração salva, mas estes campos não têm uma URL do Apps Script (https://script.google.com/…/exec):\n\n• '+ruins.join('\n• ')+'\n\nEnquanto estiverem assim, o app vai dar erro nessas funções.');
+      return;
+    }
+    closeP('settings'); say('Configuração salva.');
   });
   $('btnTestMic').addEventListener('click',function(){
     log('— teste de microfone —');
