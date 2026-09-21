@@ -819,7 +819,7 @@ function chamarHub(servico, payload, opts){
   var chaveP = critica ? pedirChaveCritica(payload.acao) : Promise.resolve(cfg.chave||'');
   return chaveP.then(function(chave){
     payload.chave = chave;
-    var ms = opts.timeout||45000;
+    var ms = opts.timeout||90000;
     var ctrl=(typeof AbortController!=='undefined')?new AbortController():null;
     var tid=setTimeout(function(){ if(ctrl) ctrl.abort(); },ms);
     return fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
